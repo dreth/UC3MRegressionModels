@@ -1,0 +1,40 @@
+---
+title: 'Regression Models: Assignment 1'
+author: "Daniel Alonso"
+date: "November 24th, 2020"
+output: 'pdf_document'
+---
+
+Importing libraries
+
+```{r, echo=TRUE, warning=FALSE}
+library(dplyr)
+```
+
+# Exercise 1
+
+## Simulation
+
+```{r, echo=TRUE, warning=FALSE}
+sim = list()
+for (j in 1:1000) {
+    vals = c()
+    for (i in 1:100) {
+        run = 3 + 3*cos(i/10 + 50) + rnorm(1, mean=0, sd=1)
+        vals = c(vals, run)
+    }
+    sim[[j]] = vals
+}
+sim
+```
+
+```{r, echo=TRUE, warning=FALSE}
+```
+
+# Exercise 2
+
+## Importing the data
+
+```{r, echo=TRUE, warning=FALSE}
+d <- data.frame(read.table('./data/index.txt', header=TRUE))
+```
