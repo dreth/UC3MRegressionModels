@@ -15,7 +15,7 @@ library(dplyr)
 
 ## Simulation
 
-```{r, echo=TRUE, warning=FALSE}
+```{r, echo=TRUE, warning=FALSE, results='hide'}
 sim = list()
 for (j in 1:1000) {
     vals = c()
@@ -36,5 +36,17 @@ sim
 ## Importing the data
 
 ```{r, echo=TRUE, warning=FALSE}
-d <- data.frame(read.table('./data/index.txt', header=TRUE))
+d <- data.frame(read.table('../data/index.txt', header=TRUE))
 ```
+
+```{r, echo=TRUE, warning=FALSE}
+X = d$PovPct
+Y = d$Brth15to17
+beta1 = cov(X, Y)/var(X)
+beta0 = mean(Y) - beta1*mean(X)
+beta1
+beta0
+```
+
+# Exercise 3
+
