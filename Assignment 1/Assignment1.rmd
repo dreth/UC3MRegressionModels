@@ -9,6 +9,7 @@ Importing libraries
 
 ```{r, echo=TRUE, warning=FALSE}
 library(dplyr)
+library(MuMIn)
 ```
 
 # Exercise 1
@@ -52,5 +53,61 @@ beta0
 
 First we have the log-likelihood function for $\beta$ and $\sigma^{2}$
 
-$l(\sigma^{2} | X) = \sum_{i=1}^n log(\frac{1}{\sqrt{2 \pi \sigma^{2}}} - \frac{(Y_{i} - (\beta_{0} + \beta{1} x_{ik} + \dots + \beta_{k} x_{ik}))^{2}}{2 \sigma^{2}})$
+$l(\sigma^{2} | X) = \sum_{i=1}^n log(\frac{1}{\sqrt{2 \pi \sigma^{2}}} - \frac{(Y_{i} - (\beta_{0} + \beta_{1} x_{ik} + \dots + \beta_{k} x_{ik}))^{2}}{2 \sigma^{2}})$
 
+# Exercise 4
+
+# Exercise 5
+
+```{r, echo=TRUE, warning=FALSE}
+bodyfat <- data.frame(read.table('../data/bodyfat.txt', header=TRUE))
+modall <- lm(hwfat ~., data = bodyfat)
+summary(modall)
+```
+
+The sum of residuals is zero:
+
+```{r, echo=TRUE, warning=FALSE}
+residuals <- sum(resid(modall))
+```
+
+The sum of the observed data is equal to the sum of the fitted values
+
+```{r, echo=TRUE, warning=FALSE}
+Y_hat <- predict(modall, bodyfat[1:length(names(bodyfat))-1])
+sum(bodyfat$hwfat) - sum(Y_hat)
+```
+
+The residuals are orthogonal to the predictors
+
+```{r, echo=TRUE, warning=FALSE}
+sum(residuals*bodyfat[1:length(names(bodyfat))-1])
+```
+
+The residuals are orthogonal to the fitted values
+
+```{r, echo=TRUE, warning=FALSE}
+sum(residuals*Y_hat)
+```
+
+# Exercise 6
+
+```{r, echo=TRUE, warning=FALSE}
+# rsq <- function(x,y) cor(x,y)^2
+# cols <- names(bodyfat)[1:length(names(bodyfat))-1]
+# r_2 <- c()
+# names(r_2) <- cols
+# for (i in 1:length(cols)) {
+#     modall <- lm(hwfat ~ cols[i], bodyfat)
+#     r_2 <- rsq(predict(hwfat))
+# }
+# r2
+```
+
+```{r, echo=TRUE, warning=FALSE}
+options(na.action = "na.fail")
+modall <- lm(hwfat ~., data = bodyfat)
+combs <- dredge(modall, extra = "R^2")
+print("best model")
+combs[combs$"R^2" == max(combs$"R^2")]
+```

@@ -116,6 +116,7 @@ Importing libraries
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{library}\NormalTok{(dplyr)}
+\KeywordTok{library}\NormalTok{(MuMIn)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -182,6 +183,263 @@ Importing libraries
 First we have the log-likelihood function for \(\beta\) and
 \(\sigma^{2}\)
 
-\(l(\sigma^{2} | X) = \sum_{i=1}^n log(\frac{1}{\sqrt{2 \pi \sigma^{2}}} - \frac{(Y_{i} - (\beta_{0} + \beta{1} x_{ik} + \dots + \beta_{k} x_{ik}))^{2}}{2 \sigma^{2}})\)
+\(l(\sigma^{2} | X) = \sum_{i=1}^n log(\frac{1}{\sqrt{2 \pi \sigma^{2}}} - \frac{(Y_{i} - (\beta_{0} + \beta_{1} x_{ik} + \dots + \beta_{k} x_{ik}))^{2}}{2 \sigma^{2}})\)
+
+\hypertarget{exercise-4}{%
+\section{Exercise 4}\label{exercise-4}}
+
+\hypertarget{exercise-5}{%
+\section{Exercise 5}\label{exercise-5}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{bodyfat <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}\KeywordTok{read.table}\NormalTok{(}\StringTok{'../data/bodyfat.txt'}\NormalTok{, }\DataTypeTok{header=}\OtherTok{TRUE}\NormalTok{))}
+\NormalTok{modall <-}\StringTok{ }\KeywordTok{lm}\NormalTok{(hwfat }\OperatorTok{~}\NormalTok{., }\DataTypeTok{data =}\NormalTok{ bodyfat)}
+\KeywordTok{summary}\NormalTok{(modall)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Call:
+## lm(formula = hwfat ~ ., data = bodyfat)
+## 
+## Residuals:
+##    Min     1Q Median     3Q    Max 
+## -6.162 -1.858 -0.464  2.502  8.177 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(>|t|)    
+## (Intercept) 13.29370    9.63027   1.380   0.1718    
+## age         -0.32893    0.32158  -1.023   0.3098    
+## ht          -0.06731    0.16051  -0.419   0.6762    
+## wt          -0.01365    0.02591  -0.527   0.5999    
+## abs          0.37142    0.08837   4.203 7.55e-05 ***
+## triceps      0.38743    0.13761   2.815   0.0063 ** 
+## subscap      0.11405    0.14193   0.804   0.4243    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 3.028 on 71 degrees of freedom
+## Multiple R-squared:  0.8918, Adjusted R-squared:  0.8827 
+## F-statistic: 97.54 on 6 and 71 DF,  p-value: < 2.2e-16
+\end{verbatim}
+
+The sum of residuals is zero:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{residuals <-}\StringTok{ }\KeywordTok{sum}\NormalTok{(}\KeywordTok{resid}\NormalTok{(modall))}
+\end{Highlighting}
+\end{Shaded}
+
+The sum of the observed data is equal to the sum of the fitted values
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{Y_hat <-}\StringTok{ }\KeywordTok{predict}\NormalTok{(modall, bodyfat[}\DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(}\KeywordTok{names}\NormalTok{(bodyfat))}\OperatorTok{-}\DecValTok{1}\NormalTok{])}
+\KeywordTok{sum}\NormalTok{(bodyfat}\OperatorTok{$}\NormalTok{hwfat) }\OperatorTok{-}\StringTok{ }\KeywordTok{sum}\NormalTok{(Y_hat)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 4.547474e-13
+\end{verbatim}
+
+The residuals are orthogonal to the predictors
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{sum}\NormalTok{(residuals}\OperatorTok{*}\NormalTok{bodyfat[}\DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(}\KeywordTok{names}\NormalTok{(bodyfat))}\OperatorTok{-}\DecValTok{1}\NormalTok{])}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] -3.077268e-10
+\end{verbatim}
+
+The residuals are orthogonal to the fitted values
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{sum}\NormalTok{(residuals}\OperatorTok{*}\NormalTok{Y_hat)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] -1.568657e-11
+\end{verbatim}
+
+\hypertarget{exercise-6}{%
+\section{Exercise 6}\label{exercise-6}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# rsq <- function(x,y) cor(x,y)^2}
+\CommentTok{# cols <- names(bodyfat)[1:length(names(bodyfat))-1]}
+\CommentTok{# r_2 <- c()}
+\CommentTok{# names(r_2) <- cols}
+\CommentTok{# for (i in 1:length(cols)) \{}
+\CommentTok{#     modall <- lm(hwfat ~ cols[i], bodyfat)}
+\CommentTok{#     r_2 <- rsq(predict(hwfat))}
+\CommentTok{# \}}
+\CommentTok{# r2}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{options}\NormalTok{(}\DataTypeTok{na.action =} \StringTok{"na.fail"}\NormalTok{)}
+\NormalTok{modall <-}\StringTok{ }\KeywordTok{lm}\NormalTok{(hwfat }\OperatorTok{~}\NormalTok{., }\DataTypeTok{data =}\NormalTok{ bodyfat)}
+\NormalTok{combs <-}\StringTok{ }\KeywordTok{dredge}\NormalTok{(modall)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Fixed term is "(Intercept)"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{combs}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Global model call: lm(formula = hwfat ~ ., data = bodyfat)
+## ---
+## Model selection table 
+##    (Intrc)    abs     age       ht   sbscp  trcps        wt df   logLik  AICc
+## 20 10.6200 0.3564 -0.5331                  0.4656            5 -194.268 399.4
+## 50  5.1120 0.4235                          0.4918 -0.028140  5 -194.664 400.2
+## 22 13.6200 0.3674         -0.17460         0.4733            5 -194.986 400.8
+## 24 15.6100 0.3702 -0.4237 -0.10200         0.4554            6 -193.854 400.9
+## 52  9.9400 0.3997 -0.3838                  0.4694 -0.015850  6 -193.866 400.9
+## 18  2.0590 0.3371                          0.5043            4 -196.412 401.4
+## 58  5.5980 0.3980                  0.14100 0.3972 -0.032400  6 -194.113 401.4
+## 28 10.6000 0.3393 -0.5312          0.06218 0.4249            6 -194.153 401.5
+## 54  8.7750 0.4124         -0.06753         0.4831 -0.020710  6 -194.569 402.3
+## 30 15.0200 0.3379         -0.19550 0.12100 0.3900            6 -194.574 402.3
+## 60  9.6920 0.3826 -0.3335          0.11180 0.3974 -0.020840  7 -193.527 402.7
+## 32 16.6200 0.3462 -0.3979 -0.12330 0.09771 0.3893            7 -193.583 402.8
+## 56 13.2800 0.3897 -0.3805 -0.06232         0.4616 -0.009103  7 -193.784 403.2
+## 26  2.0700 0.3189                  0.06632 0.4607            5 -196.288 403.4
+## 62  9.5590 0.3856         -0.07290 0.14300 0.3865 -0.024440  7 -194.001 403.6
+## 64 13.2900 0.3714 -0.3289 -0.06731 0.11410 0.3874 -0.013650  8 -193.430 404.9
+## 42  7.4660 0.4762                  0.42120        -0.043120  5 -198.493 407.8
+## 14 21.4300 0.3960         -0.28230 0.38890                   5 -198.642 408.1
+## 16 23.0300 0.4042 -0.4012 -0.20930 0.36490                   6 -197.735 408.7
+## 44 11.5500 0.4608 -0.3326          0.39220        -0.031600  6 -197.973 409.1
+## 46 15.5400 0.4463         -0.15050 0.40980        -0.026090  6 -198.053 409.3
+## 12 13.1700 0.4014 -0.6434          0.34470                   5 -199.292 409.4
+## 48 19.2200 0.4325 -0.3228 -0.14520 0.38200        -0.015510  7 -197.558 410.7
+## 10  2.9280 0.3826                  0.37920                   4 -202.064 412.7
+## 4  15.8000 0.6277 -0.7675                                    4 -204.471 417.5
+## 8  23.5900 0.6402 -0.5846 -0.16290                           5 -203.642 418.1
+## 25  1.7770                         0.35830 0.6036            4 -204.923 418.4
+## 27  7.6410        -0.3661          0.36830 0.5852            5 -204.109 419.1
+## 6  21.2400 0.6511         -0.26800                           4 -205.331 419.2
+## 36 15.3200 0.6623 -0.6555                         -0.012050  5 -204.292 419.4
+## 29 10.1000                -0.12580 0.40470 0.5636            5 -204.352 419.5
+## 63 23.5200        -0.5416 -0.27070 0.26730 0.5295  0.045310  7 -202.096 419.8
+## 61 17.8800                -0.29330 0.32620 0.5370  0.030900  6 -203.355 419.9
+## 59  8.9530        -0.5902          0.27760 0.5924  0.021350  6 -203.449 420.1
+## 40 26.0400 0.6147 -0.6296 -0.20570                 0.010020  6 -203.573 420.3
+## 57  1.4210                         0.34310 0.6065  0.003343  5 -204.900 420.6
+## 55 24.7500        -0.6974 -0.28320         0.7331  0.064000  6 -203.733 420.6
+## 34  7.2360 0.7265                                 -0.033440  4 -206.112 420.8
+## 31 11.1600        -0.2855 -0.07273 0.39290 0.5661            6 -203.955 421.1
+## 51  9.5250        -0.7546                  0.8072  0.039630  5 -205.154 421.1
+## 38 19.3700 0.6714         -0.22600                -0.008267  5 -205.280 421.4
+## 2   3.6540 0.6325                                            3 -207.960 422.2
+## 53 17.3600                -0.31810         0.8051  0.049850  5 -205.846 422.5
+## 17  1.5790                                 0.9765            3 -208.638 423.6
+## 49 -0.5971                                 0.8959  0.020900  4 -207.554 423.7
+## 19  6.6240        -0.3154                  0.9696            4 -208.089 424.7
+## 21  2.4020                -0.01249         0.9773            4 -208.633 425.8
+## 23  4.1000        -0.3768  0.05320         0.9648            5 -208.005 426.8
+## 47 34.5900        -0.5836 -0.43270 0.69370         0.056720  6 -208.474 430.1
+## 45 28.6700                -0.45950 0.76370         0.041360  5 -209.717 430.3
+## 13 18.8100                -0.24280 0.89990                   4 -211.248 431.0
+## 11 10.6500        -0.4874          0.86910                   4 -211.939 432.4
+## 9   2.8940                         0.87680                   3 -213.126 432.6
+## 15 19.8100        -0.2609 -0.19480 0.89120                   5 -210.970 432.8
+## 43 11.7800        -0.6758          0.79840         0.017830  5 -211.563 434.0
+## 41  3.2050                         0.88800        -0.002960  4 -213.111 434.8
+## 39 71.3700        -1.7370 -0.93490                 0.211500  5 -227.610 466.1
+## 37 63.1800                -1.22300                 0.212600  4 -235.343 479.2
+## 35 26.1600        -2.4350                          0.170900  4 -237.409 483.4
+## 33 -9.2640                                         0.152500  3 -250.046 506.4
+## 7  -0.6592        -1.8330  0.65440                           4 -276.779 562.1
+## 3  31.9500        -1.1270                                    3 -279.011 564.3
+## 1  14.2400                                                   2 -280.162 564.5
+## 5  -9.6720                 0.35800                           3 -279.391 565.1
+##     delta weight
+## 20   0.00  0.181
+## 50   0.79  0.122
+## 22   1.43  0.088
+## 24   1.52  0.085
+## 52   1.54  0.084
+## 18   2.00  0.066
+## 58   2.04  0.065
+## 28   2.12  0.063
+## 54   2.95  0.041
+## 30   2.96  0.041
+## 60   3.28  0.035
+## 32   3.40  0.033
+## 56   3.80  0.027
+## 26   4.04  0.024
+## 62   4.23  0.022
+## 64   5.58  0.011
+## 42   8.45  0.003
+## 14   8.75  0.002
+## 16   9.28  0.002
+## 44   9.76  0.001
+## 46   9.92  0.001
+## 12  10.05  0.001
+## 48  11.35  0.001
+## 10  13.31  0.000
+## 4   18.12  0.000
+## 8   18.75  0.000
+## 25  19.02  0.000
+## 27  19.68  0.000
+## 6   19.84  0.000
+## 36  20.05  0.000
+## 29  20.17  0.000
+## 63  20.42  0.000
+## 61  20.52  0.000
+## 59  20.71  0.000
+## 40  20.96  0.000
+## 57  21.26  0.000
+## 55  21.28  0.000
+## 34  21.40  0.000
+## 31  21.72  0.000
+## 51  21.77  0.000
+## 38  22.02  0.000
+## 2   22.87  0.000
+## 53  23.15  0.000
+## 17  24.23  0.000
+## 49  24.29  0.000
+## 19  25.36  0.000
+## 21  26.44  0.000
+## 23  27.47  0.000
+## 47  30.76  0.000
+## 45  30.90  0.000
+## 13  31.67  0.000
+## 11  33.05  0.000
+## 9   33.21  0.000
+## 15  33.40  0.000
+## 43  34.59  0.000
+## 41  35.40  0.000
+## 39  66.68  0.000
+## 37  79.86  0.000
+## 35  84.00  0.000
+## 33 107.05  0.000
+## 7  162.74  0.000
+## 3  164.98  0.000
+## 1  165.11  0.000
+## 5  165.74  0.000
+## Models ranked by AICc(x)
+\end{verbatim}
 
 \end{document}
