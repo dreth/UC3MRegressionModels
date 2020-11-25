@@ -152,6 +152,36 @@ Importing libraries
 \end{Highlighting}
 \end{Shaded}
 
-dd
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{X =}\StringTok{ }\NormalTok{d}\OperatorTok{$}\NormalTok{PovPct}
+\NormalTok{Y =}\StringTok{ }\NormalTok{d}\OperatorTok{$}\NormalTok{Brth15to17}
+\NormalTok{beta1 =}\StringTok{ }\KeywordTok{cov}\NormalTok{(X, Y)}\OperatorTok{/}\KeywordTok{var}\NormalTok{(X)}
+\NormalTok{beta0 =}\StringTok{ }\KeywordTok{mean}\NormalTok{(Y) }\OperatorTok{-}\StringTok{ }\NormalTok{beta1}\OperatorTok{*}\KeywordTok{mean}\NormalTok{(X)}
+\NormalTok{beta1}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 1.373345
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{beta0}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] 4.267293
+\end{verbatim}
+
+\hypertarget{exercise-3}{%
+\section{Exercise 3}\label{exercise-3}}
+
+First we have the log-likelihood function for \(\beta\) and
+\(\sigma^{2}\)
+
+\(l(\sigma^{2} | X) = \sum_{i=1}^n log(\frac{1}{\sqrt{2 \pi \sigma^{2}}} - \frac{(Y_{i} - (\beta_{0} + \beta{1} x_{ik} + \dots + \beta_{k} x_{ik}))^{2}}{2 \sigma^{2}})\)
 
 \end{document}
