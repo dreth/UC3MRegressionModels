@@ -111,3 +111,4 @@ combs <- dredge(modall, extra = "R^2")
 print("best model")
 combs[combs$"R^2" == max(combs$"R^2")]
 ```
+
