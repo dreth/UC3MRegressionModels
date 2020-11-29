@@ -5,9 +5,13 @@ date: "November 24th, 2020"
 output: 'pdf_document'
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
 Importing libraries
 
-```{r, echo=TRUE, warning=FALSE}
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide"}
 library(dplyr)
 library(MuMIn)
 ```
@@ -49,11 +53,37 @@ beta1
 beta0
 ```
 
+\newpage
+
 # Exercise 3
 
 First we have the log-likelihood function for $\beta$ and $\sigma^{2}$
 
 $l(\sigma^{2} | X) = \sum_{i=1}^n log(\frac{1}{\sqrt{2 \pi \sigma^{2}}} - \frac{(Y_{i} - (\beta_{0} + \beta_{1} x_{ik} + \dots + \beta_{k} x_{ik}))^{2}}{2 \sigma^{2}})$
+
+$\propto - \frac{n}{2} log(\sigma^{2}) - \frac{(Y - X \beta) \prime (Y - X \beta)}{2 \sigma^{2}}$
+
+Differentiating the second expression:
+
+$\frac{\partial l}{\partial \sigma} ( - \frac{n}{2} log(\sigma^{2}) - \frac{(Y - X \beta) \prime (Y - X \beta)}{2 \sigma^{2}} = 0$
+
+We get:
+
+$- \frac{n}{2} (\frac{1}{ \sigma^{2}} ) (2 \sigma) - (Y - X \beta) \prime (Y - X \beta) * (-2)(2 \sigma^{-3}) = 0$
+
+We reduce the expression further:
+
+$- \frac{n}{\sigma} +  \frac{(Y - X \beta) \prime (Y - X \beta)}{\sigma^{3}} = 0$
+
+We multiply both sides by $\sigma^{3}$ and we get:
+
+$- n \sigma^{2} +  (Y - X \beta) \prime (Y - X \beta) = 0$
+
+And solving for $\sigma^{2}$ we get:
+
+$\hat{\sigma^{2}} = \frac{(Y - X \beta) \prime (Y - X \beta)}{n}$
+
+Which is our maximum likelihood estimator for $\sigma^2$
 
 # Exercise 4
 

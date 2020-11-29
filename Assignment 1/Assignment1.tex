@@ -116,28 +116,6 @@ Importing libraries
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{library}\NormalTok{(dplyr)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## 
-## Attaching package: 'dplyr'
-\end{verbatim}
-
-\begin{verbatim}
-## The following objects are masked from 'package:stats':
-## 
-##     filter, lag
-\end{verbatim}
-
-\begin{verbatim}
-## The following objects are masked from 'package:base':
-## 
-##     intersect, setdiff, setequal, union
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
 \KeywordTok{library}\NormalTok{(MuMIn)}
 \end{Highlighting}
 \end{Shaded}
@@ -199,6 +177,8 @@ Importing libraries
 ## [1] 4.267293
 \end{verbatim}
 
+\newpage
+
 \hypertarget{exercise-3}{%
 \section{Exercise 3}\label{exercise-3}}
 
@@ -206,6 +186,30 @@ First we have the log-likelihood function for \(\beta\) and
 \(\sigma^{2}\)
 
 \(l(\sigma^{2} | X) = \sum_{i=1}^n log(\frac{1}{\sqrt{2 \pi \sigma^{2}}} - \frac{(Y_{i} - (\beta_{0} + \beta_{1} x_{ik} + \dots + \beta_{k} x_{ik}))^{2}}{2 \sigma^{2}})\)
+
+\(\propto - \frac{n}{2} log(\sigma^{2}) - \frac{(Y - X \beta) \prime (Y - X \beta)}{2 \sigma^{2}}\)
+
+Differentiating the second expression:
+
+\(\frac{\partial l}{\partial \sigma} ( - \frac{n}{2} log(\sigma^{2}) - \frac{(Y - X \beta) \prime (Y - X \beta)}{2 \sigma^{2}} = 0\)
+
+We get:
+
+\(- \frac{n}{2} (\frac{1}{ \sigma^{2}} ) (2 \sigma) - (Y - X \beta) \prime (Y - X \beta) * (-2)(2 \sigma^{-3}) = 0\)
+
+We reduce the expression further:
+
+\(- \frac{n}{\sigma} + \frac{(Y - X \beta) \prime (Y - X \beta)}{\sigma^{3}} = 0\)
+
+We multiply both sides by \(\sigma^{3}\) and we get:
+
+\(- n \sigma^{2} + (Y - X \beta) \prime (Y - X \beta) = 0\)
+
+And solving for \(\sigma^{2}\) we get:
+
+\(\hat{\sigma^{2}} = \frac{(Y - X \beta) \prime (Y - X \beta)}{n}\)
+
+Which is our maximum likelihood estimator for \(\sigma^2\)
 
 \hypertarget{exercise-4}{%
 \section{Exercise 4}\label{exercise-4}}
