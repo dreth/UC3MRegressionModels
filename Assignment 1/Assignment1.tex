@@ -119,6 +119,8 @@ Importing libraries
 \KeywordTok{library}\NormalTok{(MuMIn)}
 \KeywordTok{library}\NormalTok{(MASS)}
 \KeywordTok{library}\NormalTok{(leaps)}
+\KeywordTok{library}\NormalTok{(glmnet)}
+\KeywordTok{library}\NormalTok{(car)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -131,38 +133,55 @@ Importing libraries
 \begin{Shaded}
 \begin{Highlighting}[]
 \CommentTok{# terms}
-\NormalTok{sim =}\StringTok{ }\KeywordTok{list}\NormalTok{()}
-\NormalTok{epsilon =}\StringTok{ }\KeywordTok{list}\NormalTok{()}
-\NormalTok{cosine_term =}\StringTok{ }\KeywordTok{list}\NormalTok{()}
-
+\NormalTok{s =}\StringTok{ }\KeywordTok{list}\NormalTok{()}
+\NormalTok{X =}\StringTok{ }\KeywordTok{list}\NormalTok{()}
 \CommentTok{# betas estimation}
-\NormalTok{beta1_est =}\StringTok{ }\KeywordTok{list}\NormalTok{()}
-\NormalTok{beta2_est =}\StringTok{ }\KeywordTok{list}\NormalTok{()}
-
+\NormalTok{beta_est =}\StringTok{ }\KeywordTok{list}\NormalTok{()}
+\NormalTok{beta1hat =}\StringTok{ }\KeywordTok{c}\NormalTok{()}
+\NormalTok{beta2hat =}\StringTok{ }\KeywordTok{c}\NormalTok{()}
 \CommentTok{# variables}
 \NormalTok{phi =}\StringTok{ }\DecValTok{50}
 \NormalTok{beta1 =}\StringTok{ }\DecValTok{3}
 \NormalTok{beta2 =}\StringTok{ }\DecValTok{3}
+\NormalTok{x1 =}\StringTok{ }\KeywordTok{matrix}\NormalTok{(}\KeywordTok{rep}\NormalTok{(}\DecValTok{1}\NormalTok{,}\DecValTok{100}\NormalTok{),}\DataTypeTok{nrow=}\DecValTok{100}\NormalTok{,}\DataTypeTok{byrow=}\NormalTok{T)}
 
 \CommentTok{# simulation}
-\ControlFlowTok{for}\NormalTok{ (j }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\DecValTok{1000}\NormalTok{) \{}
-\NormalTok{    vals =}\StringTok{ }\KeywordTok{c}\NormalTok{()}
-\NormalTok{    eps =}\StringTok{ }\KeywordTok{c}\NormalTok{()}
-\NormalTok{    cos_t =}\StringTok{ }\KeywordTok{c}\NormalTok{()}
-    \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\DecValTok{100}\NormalTok{) \{}
-\NormalTok{        eps =}\StringTok{ }\KeywordTok{c}\NormalTok{(eps, }\KeywordTok{rnorm}\NormalTok{(}\DecValTok{1}\NormalTok{, }\DataTypeTok{mean=}\DecValTok{0}\NormalTok{, }\DataTypeTok{sd=}\DecValTok{1}\NormalTok{))}
-\NormalTok{        cos_t =}\StringTok{ }\KeywordTok{c}\NormalTok{(cos_t, }\KeywordTok{cos}\NormalTok{(i}\OperatorTok{/}\DecValTok{10} \OperatorTok{+}\StringTok{ }\NormalTok{phi))}
-\NormalTok{        run =}\StringTok{ }\NormalTok{beta1 }\OperatorTok{+}\StringTok{ }\NormalTok{beta2}\OperatorTok{*}\NormalTok{cos_t[i] }\OperatorTok{+}\StringTok{ }\NormalTok{eps[i]}
-\NormalTok{        vals =}\StringTok{ }\KeywordTok{c}\NormalTok{(vals, run)}
+\NormalTok{simulation <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(mean,sd,phi,beta1,beta2,iters,size) \{}
+    \ControlFlowTok{for}\NormalTok{ (j }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\NormalTok{iters) \{}
+\NormalTok{        loop_s =}\StringTok{ }\KeywordTok{matrix}\NormalTok{(}\KeywordTok{rep}\NormalTok{(}\DecValTok{0}\NormalTok{,size),}\DataTypeTok{nrow=}\NormalTok{size,}\DataTypeTok{byrow=}\NormalTok{T)}
+\NormalTok{        loop_x2 =}\StringTok{ }\KeywordTok{matrix}\NormalTok{(}\KeywordTok{rep}\NormalTok{(}\DecValTok{0}\NormalTok{,size),}\DataTypeTok{nrow=}\NormalTok{size,}\DataTypeTok{byrow=}\NormalTok{T)}
+        \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\NormalTok{size) \{}
+\NormalTok{            e =}\StringTok{ }\KeywordTok{rnorm}\NormalTok{(}\DecValTok{1}\NormalTok{, }\DataTypeTok{mean=}\NormalTok{mean, }\DataTypeTok{sd=}\NormalTok{sd)}
+\NormalTok{            loop_x2[i] =}\StringTok{ }\KeywordTok{cos}\NormalTok{(i}\OperatorTok{/}\DecValTok{10} \OperatorTok{+}\StringTok{ }\NormalTok{phi)}
+\NormalTok{            loop_s[i] =}\StringTok{ }\NormalTok{beta1 }\OperatorTok{+}\StringTok{ }\NormalTok{beta2}\OperatorTok{*}\NormalTok{loop_x2[i] }\OperatorTok{+}\StringTok{ }\NormalTok{e}
+\NormalTok{        \}}
+\NormalTok{        X[[j]] =}\StringTok{ }\KeywordTok{cbind}\NormalTok{(x1,loop_x2)}
+\NormalTok{        s[[j]] =}\StringTok{ }\NormalTok{loop_s}
+\NormalTok{        beta_est[[j]] =}\StringTok{ }\KeywordTok{ginv}\NormalTok{(}\KeywordTok{t}\NormalTok{(X[[j]])}\OperatorTok{%*%}\NormalTok{X[[j]])}\OperatorTok{%*%}\KeywordTok{t}\NormalTok{(X[[j]])}\OperatorTok{%*%}\NormalTok{loop_s}
+\NormalTok{        beta1hat =}\StringTok{ }\KeywordTok{c}\NormalTok{(beta1hat, beta_est[[j]][}\DecValTok{1}\NormalTok{])}
+\NormalTok{        beta2hat =}\StringTok{ }\KeywordTok{c}\NormalTok{(beta2hat, beta_est[[j]][}\DecValTok{2}\NormalTok{])}
 \NormalTok{    \}}
-\NormalTok{    sim[[j]] =}\StringTok{ }\NormalTok{vals}
-\NormalTok{    epsilon[[j]] =}\StringTok{ }\NormalTok{eps}
-\NormalTok{    cosine_term[[j]] =}\StringTok{ }\NormalTok{cos_t}
-\NormalTok{    beta1_est[[j]] =}\StringTok{ }\KeywordTok{mean}\NormalTok{(sim[[j]]) }\OperatorTok{-}\StringTok{ }\NormalTok{beta2}\OperatorTok{*}\KeywordTok{mean}\NormalTok{(cosine_term[[j]]) }\OperatorTok{-}\StringTok{ }\KeywordTok{mean}\NormalTok{(epsilon[[j]])}
-\NormalTok{    beta2_est[[j]] =}\StringTok{ }\NormalTok{(}\KeywordTok{mean}\NormalTok{(sim[[j]]) }\OperatorTok{-}\StringTok{ }\NormalTok{beta1 }\OperatorTok{-}\StringTok{ }\KeywordTok{mean}\NormalTok{(epsilon[[j]]))}\OperatorTok{/}\KeywordTok{mean}\NormalTok{(cosine_term[[j]])}
+    \CommentTok{# plotting beta1hat and beta2hat}
+    \KeywordTok{par}\NormalTok{(}\DataTypeTok{mfrow=}\KeywordTok{c}\NormalTok{(}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{))}
+    \KeywordTok{hist}\NormalTok{(beta1hat)}
+    \KeywordTok{hist}\NormalTok{(beta2hat)}
 \NormalTok{\}}
 \end{Highlighting}
 \end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{simulation}\NormalTok{(}\DataTypeTok{mean=}\DecValTok{0}\NormalTok{, }\DataTypeTok{sd=}\DecValTok{1}\NormalTok{, }\DataTypeTok{phi=}\NormalTok{phi, }\DataTypeTok{beta1=}\NormalTok{beta1, }\DataTypeTok{beta2=}\NormalTok{beta2, }\DataTypeTok{iters=}\DecValTok{1000}\NormalTok{, }\DataTypeTok{size=}\DecValTok{100}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{./figures/unnamed-chunk-3-1.pdf}
+
+We know that the estimate is unbiased if its expected value of our
+estimators is equal to the real value of our estimators (in this case
+\(E[ \hat{\beta_{1}}]) = \beta_{1}\) and
+\(E[ \hat{\beta_{2}}]) = \beta_{2}\) as the sample size
+\(n \rightarrow \inf\).
 
 \hypertarget{exercise-2}{%
 \section{Exercise 2}\label{exercise-2}}
@@ -519,7 +538,7 @@ is our expression for the \((1-\alpha)\%\) confidence interval for
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-19-1.pdf}
+\includegraphics{./figures/unnamed-chunk-20-1.pdf}
 
 We can see that the square root transformation is appropriate for the
 \(X_{2}\) variable
@@ -533,7 +552,7 @@ We can see that the square root transformation is appropriate for the
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-20-1.pdf}
+\includegraphics{./figures/unnamed-chunk-21-1.pdf}
 
 We can see that the \(X^{2}\) transformation is appropriate for the
 \(X_{3}\) variable
@@ -566,7 +585,7 @@ We can see that the \(X^{2}\) transformation is appropriate for the
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-22-1.pdf}
+\includegraphics{./figures/unnamed-chunk-23-1.pdf}
 
 Neither variable has constant variance, therefore we apply a boxcox
 transformation to both \(X_{2}\) and \(X_{3}\).
@@ -579,7 +598,7 @@ transformation to both \(X_{2}\) and \(X_{3}\).
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-23-1.pdf}
+\includegraphics{./figures/unnamed-chunk-24-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -587,7 +606,7 @@ transformation to both \(X_{2}\) and \(X_{3}\).
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-24-1.pdf}
+\includegraphics{./figures/unnamed-chunk-25-1.pdf}
 
 \newpage
 
@@ -605,11 +624,48 @@ boxcox transformation using \(\lambda = -1\).
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-25-1.pdf}
+\includegraphics{./figures/unnamed-chunk-26-1.pdf}
 
 Here we see the situation has improved significantly and we now have
 constant variance.
 
 \newpage
+
+\hypertarget{exercise-12}{%
+\section{Exercise 12}\label{exercise-12}}
+
+\newpage
+
+\hypertarget{exercise-13}{%
+\section{Exercise 13}\label{exercise-13}}
+
+Using R's function to calculate VIF for our model:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{vif}\NormalTok{(modall)}
+\CommentTok{#>       age        ht        wt       abs   triceps   subscap }
+\CommentTok{#>  1.553994  2.582940 10.194274 10.799321 10.951090 14.114459}
+\end{Highlighting}
+\end{Shaded}
+
+We can see that the VIF score for \textbf{triceps}, \textbf{abs},
+\textbf{wt} and \textbf{subscap} are all above 10 and therefore very
+high.
+
+Programming my own VIF function:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{vif_mc <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(X) \{}
+    \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\NormalTok{(}\KeywordTok{length}\NormalTok{(}\KeywordTok{names}\NormalTok{(X)))) \{}
+\NormalTok{        preds <-}\StringTok{ }\DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(}\KeywordTok{names}\NormalTok{(X))}
+\NormalTok{        preds <-}\StringTok{ }\NormalTok{preds[preds }\OperatorTok{!=}\StringTok{ }\NormalTok{i]}
+\NormalTok{        model <-}\StringTok{ }\KeywordTok{lm}\NormalTok{(X[,i] }\OperatorTok{~}\StringTok{ }\NormalTok{X[,preds])}
+        \KeywordTok{print}\NormalTok{(model)}
+\NormalTok{    \}}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
 
 \end{document}

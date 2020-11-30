@@ -14,14 +14,27 @@ fig.path = './figures/'
 )
 ```
 
-Importing libraries
+## Installing libraries used
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide"}
+packages = c("dplyr","MuMIn","MASS","leaps","glmnet","car")
+for (package in packages) {
+    install.packages(package)
+}
+```
+
+## Importing libraries
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide"}
 library(dplyr)
 library(MuMIn)
 library(MASS)
 library(leaps)
+library(glmnet)
+library(car)
 ```
+
+
 
 # Exercise 1
 
@@ -29,37 +42,50 @@ library(leaps)
 
 ```{r, echo=TRUE, warning=FALSE, results='hide'}
 # terms
-sim = list()
-epsilon = list()
-cosine_term = list()
-
+s = list()
+X = list()
 # betas estimation
-beta1_est = list()
-beta2_est = list()
-
+beta_est = list()
+beta1hat = c()
+beta2hat = c()
 # variables
 phi = 50
 beta1 = 3
 beta2 = 3
+x1 = matrix(rep(1,100),nrow=100,byrow=T)
 
 # simulation
-for (j in 1:1000) {
-    vals = c()
-    eps = c()
-    cos_t = c()
-    for (i in 1:100) {
-        eps = c(eps, rnorm(1, mean=0, sd=1))
-        cos_t = c(cos_t, cos(i/10 + phi))
-        run = beta1 + beta2*cos_t[i] + eps[i]
-        vals = c(vals, run)
+simulation <- function(mean,sd,phi,beta1,beta2,iters,size) {
+    for (j in 1:iters) {
+        loop_s = matrix(rep(0,size),nrow=size,byrow=T)
+        loop_x2 = matrix(rep(0,size),nrow=size,byrow=T)
+        for (i in 1:size) {
+            e = rnorm(1, mean=mean, sd=sd)
+            loop_x2[i] = cos(i/10 + phi)
+            loop_s[i] = beta1 + beta2*loop_x2[i] + e
+        }
+        X[[j]] = cbind(x1,loop_x2)
+        s[[j]] = loop_s
+        beta_est[[j]] = ginv(t(X[[j]])%*%X[[j]])%*%t(X[[j]])%*%loop_s
+        beta1hat = c(beta1hat, beta_est[[j]][1])
+        beta2hat = c(beta2hat, beta_est[[j]][2])
     }
-    sim[[j]] = vals
-    epsilon[[j]] = eps
-    cosine_term[[j]] = cos_t
-    beta1_est[[j]] = mean(sim[[j]]) - beta2*mean(cosine_term[[j]]) - mean(epsilon[[j]])
-    beta2_est[[j]] = (mean(sim[[j]]) - beta1 - mean(epsilon[[j]]))/mean(cosine_term[[j]])
+    # plotting beta1hat and beta2hat
+    par(mfrow=c(2,1))
+    hist(beta1hat)
+    hist(beta2hat)
 }
 ```
+
+```{r, echo=TRUE, warning=FALSE, results='hide', fig.height=6}
+simulation(mean=0, sd=1, phi=phi, beta1=beta1, beta2=beta2, iters=1000, size=100)
+```
+
+We know that the estimate is unbiased if its expected value of our estimators is equal to the real value of our estimators (in this case $E[ \hat{\beta_{1}}]) = \beta_{1}$ and $E[ \hat{\beta_{2}}]) = \beta_{2}$ as the sample size $n \rightarrow \inf$.
+
+
+
+
 
 # Exercise 2
 
@@ -353,3 +379,31 @@ Here we see the situation has improved significantly and we now have constant va
 
 \newpage
 
+# Exercise 12
+
+
+
+\newpage
+
+# Exercise 13
+
+Using R's function to calculate VIF for our model:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+vif(modall)
+```
+
+We can see that the VIF score for **triceps**, **abs**, **wt** and **subscap** are all above 10 and therefore very high.
+
+Programming my own VIF function:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+vif_mc <- function(X) {
+    for (i in 1:(length(names(X)))) {
+        preds <- 1:length(names(X))
+        preds <- preds[preds != i]
+        model <- lm(X[,i] ~ X[,preds])
+        print(model)
+    }
+}
+```
