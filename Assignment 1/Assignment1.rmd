@@ -20,6 +20,7 @@ Importing libraries
 library(dplyr)
 library(MuMIn)
 library(MASS)
+library(leaps)
 ```
 
 # Exercise 1
@@ -27,19 +28,37 @@ library(MASS)
 ## Simulation
 
 ```{r, echo=TRUE, warning=FALSE, results='hide'}
+# terms
 sim = list()
+epsilon = list()
+cosine_term = list()
+
+# betas estimation
+beta1_est = list()
+beta2_est = list()
+
+# variables
+phi = 50
+beta1 = 3
+beta2 = 3
+
+# simulation
 for (j in 1:1000) {
     vals = c()
+    eps = c()
+    cos_t = c()
     for (i in 1:100) {
-        run = 3 + 3*cos(i/10 + 50) + rnorm(1, mean=0, sd=1)
+        eps = c(eps, rnorm(1, mean=0, sd=1))
+        cos_t = c(cos_t, cos(i/10 + phi))
+        run = beta1 + beta2*cos_t[i] + eps[i]
         vals = c(vals, run)
     }
     sim[[j]] = vals
+    epsilon[[j]] = eps
+    cosine_term[[j]] = cos_t
+    beta1_est[[j]] = mean(sim[[j]]) - beta2*mean(cosine_term[[j]]) - mean(epsilon[[j]])
+    beta2_est[[j]] = (mean(sim[[j]]) - beta1 - mean(epsilon[[j]]))/mean(cosine_term[[j]])
 }
-sim
-```
-
-```{r, echo=TRUE, warning=FALSE}
 ```
 
 # Exercise 2
@@ -135,15 +154,69 @@ sum(residuals*Y_hat)
 
 # Exercise 6
 
+We use regsubsets to find the best model combinations by adjusted $R^{2}$
+
 ```{r, echo=TRUE, warning=FALSE}
 options(na.action = "na.fail")
 modall <- lm(hwfat ~., data = bodyfat)
+combs <- leaps::regsubsets(bodyfat[,1:6],bodyfat[,7])
+summary(combs)
+```
+
+And their corresponding $R^{2} values:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+summary(combs)$adjr2
+```
+
+We can see the best model is the one with the following $R^{2}$
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+max(summary(combs$adjr2))
+```
+
+Which corresponds to the model which uses the variables **age**, **ht**, **abs** and **triceps**.
+
+We can also do this same calculation using the function dredge (albeit less efficiently):
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
 combs <- dredge(modall, extra = "R^2")
 print("best model")
 combs[combs$"R^2" == max(combs$"R^2")]
 ```
 
+\newpage
+
 # Exercise 7
+
+We know that:
+
+$SST = \sum_{i=1}^{n} (y_{i}-\bar{y})^{2}\\
+= \sum_{i=1}^{n} (y_{i} - \hat{y_{i}} + \hat{y_{i}} - \bar{y})^{2}\\
+= \sum_{i=1}^{n} (y_{i} - \hat{y_{i}})^{2} + 2 \sum_{i=1}^{n} (y_{i} - \hat{y_{i}}) (\hat{y_{i}} - \bar{y}) + \sum_{i=1}^{n} (\hat{y_{i}} - \bar{y})^{2}\\
+= SSE + SSR + 2 \sum_{i=1}^{n} (y_{i}-\hat{y_{i}})(\hat{y_{i}}-\bar{y})$
+
+No we must prove that:
+
+$2 \sum_{i=1}^{n} (y_{i}-\hat{y_{i}})(\hat{y_{i}}-\bar{y}) = 0$
+
+So then we have:
+
+$\sum_{i=1}^{n} (y_{i}-\hat{y_{i}})(\hat{y_{i}}-\bar{y}) = \sum_{i=1}^{n} (y_{i} - \hat{y_{i}}) \hat{y_{i}} - \sum_{i=1}^{n} (y_{i} - \hat{y_{i}}) \bar{y} = 0$
+
+Because we know that:
+
+$\sum_{i=1}^{n} (y_{i} - \hat{y_{i}}) \hat{y_{i}} = 0$ 
+
+Given that the residuals must be orthogonal to the fitted values.
+
+And:
+
+$\sum_{i=1}^{n} (y_{i} - \hat{y_{i}}) \bar{y} = 0$
+
+Because the sum of the observed data is equal to the sum of the fitted values:
+
+$\sum_{i=1}^{n} y_{i} = \sum_{i=1}^{n} \hat{y_{i}}$
 
 \newpage
 
@@ -207,9 +280,76 @@ is our expression for the $(1-\alpha)\%$ confidence interval for $\hat{Y_{h}}$ w
 minmax_scaler <- function(x) {
     return((x-min(x))/(max(x)-min(x)))
 }
+```
 
-
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
 transform <- data.frame(read.table('../data/Transform_V2.txt', header=TRUE))
-trm1 <- lm(y ~ x1 + sqrt(x2+1) + minmax_scaler(sqrt(x3)), data=transform)
+trm1 <- lm(y ~ sqrt(x2+1), data=transform)
+trm2 <- lm(y ~ I(x3^(2)), data=transform)
+par(mfrow=c(2,2))
 plot(trm1)
 ```
+
+We can see that the square root transformation is appropriate for the $X_{2}$ variable
+
+\newpage
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+par(mfrow=c(2,2))
+plot(trm2)
+```
+
+We can see that the  $X^{2}$ transformation is appropriate for the $X_{3}$ variable
+
+\newpage
+
+# Exercise 11
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+bxcx_transf <- function(x, lambda) {
+    if (lambda == 0) {
+        return(log(x))
+    } else {
+        return((x^(lambda)-1)/lambda)
+    }
+}
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+transform2 <- data.frame(read.table('../data/Transform2_V2.txt', header=TRUE))
+trm1 <- lm(y2 ~ x1, data=transform2)
+trm2 <- lm(y2 ~ x2, data=transform2)
+par(mfrow=c(2,4))
+plot(trm1)
+plot(trm2)
+```
+
+Neither variable has constant variance, therefore we apply a boxcox transformation to both $X_{2}$ and $X_{3}$.
+
+\newpage
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+boxcox(trm2)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+boxcox(trm1)
+```
+
+\newpage
+
+As $-1$ is in the confidence interval for both models, we will apply a boxcox transformation using $\lambda = -1$.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+transform2 <- data.frame(read.table('../data/Transform2_V2.txt', header=TRUE))
+trm1 <- lm(bxcx_transf(y2,-1) ~ x1, data=transform2)
+trm2 <- lm(bxcx_transf(y2,-1) ~ x2, data=transform2)
+par(mfrow=c(2,4))
+plot(trm1)
+plot(trm2)
+```
+
+Here we see the situation has improved significantly and we now have constant variance.
+
+\newpage
+
