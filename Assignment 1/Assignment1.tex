@@ -166,22 +166,11 @@ Importing libraries
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{beta1}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## [1] 1.373345
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
+\CommentTok{#> [1] 1.373345}
 \NormalTok{beta0}
+\CommentTok{#> [1] 4.267293}
 \end{Highlighting}
 \end{Shaded}
-
-\begin{verbatim}
-## [1] 4.267293
-\end{verbatim}
 
 \newpage
 
@@ -230,34 +219,31 @@ Which is our maximum likelihood estimator for \(\sigma^2\)
 \NormalTok{bodyfat <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}\KeywordTok{read.table}\NormalTok{(}\StringTok{'../data/bodyfat.txt'}\NormalTok{, }\DataTypeTok{header=}\OtherTok{TRUE}\NormalTok{))}
 \NormalTok{modall <-}\StringTok{ }\KeywordTok{lm}\NormalTok{(hwfat }\OperatorTok{~}\NormalTok{., }\DataTypeTok{data =}\NormalTok{ bodyfat)}
 \KeywordTok{summary}\NormalTok{(modall)}
+\CommentTok{#> }
+\CommentTok{#> Call:}
+\CommentTok{#> lm(formula = hwfat ~ ., data = bodyfat)}
+\CommentTok{#> }
+\CommentTok{#> Residuals:}
+\CommentTok{#>    Min     1Q Median     3Q    Max }
+\CommentTok{#> -6.162 -1.858 -0.464  2.502  8.177 }
+\CommentTok{#> }
+\CommentTok{#> Coefficients:}
+\CommentTok{#>             Estimate Std. Error t value Pr(>|t|)    }
+\CommentTok{#> (Intercept) 13.29370    9.63027   1.380   0.1718    }
+\CommentTok{#> age         -0.32893    0.32158  -1.023   0.3098    }
+\CommentTok{#> ht          -0.06731    0.16051  -0.419   0.6762    }
+\CommentTok{#> wt          -0.01365    0.02591  -0.527   0.5999    }
+\CommentTok{#> abs          0.37142    0.08837   4.203 7.55e-05 ***}
+\CommentTok{#> triceps      0.38743    0.13761   2.815   0.0063 ** }
+\CommentTok{#> subscap      0.11405    0.14193   0.804   0.4243    }
+\CommentTok{#> ---}
+\CommentTok{#> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1}
+\CommentTok{#> }
+\CommentTok{#> Residual standard error: 3.028 on 71 degrees of freedom}
+\CommentTok{#> Multiple R-squared:  0.8918, Adjusted R-squared:  0.8827 }
+\CommentTok{#> F-statistic: 97.54 on 6 and 71 DF,  p-value: < 2.2e-16}
 \end{Highlighting}
 \end{Shaded}
-
-\begin{verbatim}
-## 
-## Call:
-## lm(formula = hwfat ~ ., data = bodyfat)
-## 
-## Residuals:
-##    Min     1Q Median     3Q    Max 
-## -6.162 -1.858 -0.464  2.502  8.177 
-## 
-## Coefficients:
-##             Estimate Std. Error t value Pr(>|t|)    
-## (Intercept) 13.29370    9.63027   1.380   0.1718    
-## age         -0.32893    0.32158  -1.023   0.3098    
-## ht          -0.06731    0.16051  -0.419   0.6762    
-## wt          -0.01365    0.02591  -0.527   0.5999    
-## abs          0.37142    0.08837   4.203 7.55e-05 ***
-## triceps      0.38743    0.13761   2.815   0.0063 ** 
-## subscap      0.11405    0.14193   0.804   0.4243    
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Residual standard error: 3.028 on 71 degrees of freedom
-## Multiple R-squared:  0.8918, Adjusted R-squared:  0.8827 
-## F-statistic: 97.54 on 6 and 71 DF,  p-value: < 2.2e-16
-\end{verbatim}
 
 The sum of residuals is zero:
 
@@ -273,36 +259,27 @@ The sum of the observed data is equal to the sum of the fitted values
 \begin{Highlighting}[]
 \NormalTok{Y_hat <-}\StringTok{ }\KeywordTok{predict}\NormalTok{(modall, bodyfat[}\DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(}\KeywordTok{names}\NormalTok{(bodyfat))}\OperatorTok{-}\DecValTok{1}\NormalTok{])}
 \KeywordTok{sum}\NormalTok{(bodyfat}\OperatorTok{$}\NormalTok{hwfat) }\OperatorTok{-}\StringTok{ }\KeywordTok{sum}\NormalTok{(Y_hat)}
+\CommentTok{#> [1] 4.547474e-13}
 \end{Highlighting}
 \end{Shaded}
-
-\begin{verbatim}
-## [1] 4.547474e-13
-\end{verbatim}
 
 The residuals are orthogonal to the predictors
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{sum}\NormalTok{(residuals}\OperatorTok{*}\NormalTok{bodyfat[}\DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(}\KeywordTok{names}\NormalTok{(bodyfat))}\OperatorTok{-}\DecValTok{1}\NormalTok{])}
+\CommentTok{#> [1] -3.077268e-10}
 \end{Highlighting}
 \end{Shaded}
-
-\begin{verbatim}
-## [1] -3.077268e-10
-\end{verbatim}
 
 The residuals are orthogonal to the fitted values
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{sum}\NormalTok{(residuals}\OperatorTok{*}\NormalTok{Y_hat)}
+\CommentTok{#> [1] -1.568657e-11}
 \end{Highlighting}
 \end{Shaded}
-
-\begin{verbatim}
-## [1] -1.568657e-11
-\end{verbatim}
 
 \newpage
 
@@ -314,39 +291,20 @@ The residuals are orthogonal to the fitted values
 \KeywordTok{options}\NormalTok{(}\DataTypeTok{na.action =} \StringTok{"na.fail"}\NormalTok{)}
 \NormalTok{modall <-}\StringTok{ }\KeywordTok{lm}\NormalTok{(hwfat }\OperatorTok{~}\NormalTok{., }\DataTypeTok{data =}\NormalTok{ bodyfat)}
 \NormalTok{combs <-}\StringTok{ }\KeywordTok{dredge}\NormalTok{(modall, }\DataTypeTok{extra =} \StringTok{"R^2"}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## Fixed term is "(Intercept)"
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
+\CommentTok{#> Fixed term is "(Intercept)"}
 \KeywordTok{print}\NormalTok{(}\StringTok{"best model"}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-## [1] "best model"
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
+\CommentTok{#> [1] "best model"}
 \NormalTok{combs[combs}\OperatorTok{$}\StringTok{"R^2"} \OperatorTok{==}\StringTok{ }\KeywordTok{max}\NormalTok{(combs}\OperatorTok{$}\StringTok{"R^2"}\NormalTok{)]}
+\CommentTok{#> Global model call: lm(formula = hwfat ~ ., data = bodyfat)}
+\CommentTok{#> ---}
+\CommentTok{#> Model selection table }
+\CommentTok{#>    (Intrc)    abs     age       ht  sbscp  trcps       wt    R^2 df  logLik}
+\CommentTok{#> 64   13.29 0.3714 -0.3289 -0.06731 0.1141 0.3874 -0.01365 0.8918  8 -193.43}
+\CommentTok{#>     AICc delta weight}
+\CommentTok{#> 64 404.9  5.58      1}
+\CommentTok{#> Models ranked by AICc(x)}
 \end{Highlighting}
 \end{Shaded}
-
-\begin{verbatim}
-## Global model call: lm(formula = hwfat ~ ., data = bodyfat)
-## ---
-## Model selection table 
-##    (Intrc)    abs     age       ht  sbscp  trcps       wt    R^2 df  logLik
-## 64   13.29 0.3714 -0.3289 -0.06731 0.1141 0.3874 -0.01365 0.8918  8 -193.43
-##     AICc delta weight
-## 64 404.9  5.58      1
-## Models ranked by AICc(x)
-\end{verbatim}
 
 \hypertarget{exercise-7}{%
 \section{Exercise 7}\label{exercise-7}}
@@ -390,37 +348,31 @@ excluded:
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(vars)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"excluding: "}\NormalTok{, vars[i], }\StringTok{": "}\NormalTok{, pvalues[i] , }\DataTypeTok{sep=}\StringTok{""}\NormalTok{))}
 \NormalTok{\}}
+\CommentTok{#> [1] "excluding: age: 0.30983932449522"}
+\CommentTok{#> [1] "excluding: ht: 0.67622546378066"}
+\CommentTok{#> [1] "excluding: wt: 0.599878887504826"}
+\CommentTok{#> [1] "excluding: abs: 7.54898491342447e-05"}
+\CommentTok{#> [1] "excluding: triceps: 0.00630111253287972"}
+\CommentTok{#> [1] "excluding: subscap: 0.424314507846979"}
 \end{Highlighting}
 \end{Shaded}
-
-\begin{verbatim}
-## [1] "excluding: age: 0.30983932449522"
-## [1] "excluding: ht: 0.67622546378066"
-## [1] "excluding: wt: 0.599878887504826"
-## [1] "excluding: abs: 7.54898491342447e-05"
-## [1] "excluding: triceps: 0.00630111253287972"
-## [1] "excluding: subscap: 0.424314507846979"
-\end{verbatim}
 
 Then we compare with summary:
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{summary}\NormalTok{(modall)[}\DecValTok{4}\NormalTok{]}
+\CommentTok{#> $coefficients}
+\CommentTok{#>                Estimate Std. Error    t value     Pr(>|t|)}
+\CommentTok{#> (Intercept) 13.29369860 9.63026704  1.3804081 1.717917e-01}
+\CommentTok{#> age         -0.32893403 0.32157778 -1.0228755 3.098393e-01}
+\CommentTok{#> ht          -0.06730905 0.16050751 -0.4193514 6.762255e-01}
+\CommentTok{#> wt          -0.01365183 0.02590783 -0.5269385 5.998789e-01}
+\CommentTok{#> abs          0.37141976 0.08836595  4.2032001 7.548985e-05}
+\CommentTok{#> triceps      0.38742647 0.13761017  2.8153912 6.301113e-03}
+\CommentTok{#> subscap      0.11405213 0.14192779  0.8035927 4.243145e-01}
 \end{Highlighting}
 \end{Shaded}
-
-\begin{verbatim}
-## $coefficients
-##                Estimate Std. Error    t value     Pr(>|t|)
-## (Intercept) 13.29369860 9.63026704  1.3804081 1.717917e-01
-## age         -0.32893403 0.32157778 -1.0228755 3.098393e-01
-## ht          -0.06730905 0.16050751 -0.4193514 6.762255e-01
-## wt          -0.01365183 0.02590783 -0.5269385 5.998789e-01
-## abs          0.37141976 0.08836595  4.2032001 7.548985e-05
-## triceps      0.38742647 0.13761017  2.8153912 6.301113e-03
-## subscap      0.11405213 0.14192779  0.8035927 4.243145e-01
-\end{verbatim}
 
 And we can see we get the same pvalues in the summary. Therefore viewing
 the summary can be a much faster version of performing such testing.
@@ -449,8 +401,20 @@ is our expression for the \((1-\alpha)\%\) confidence interval for
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{transform <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}\KeywordTok{read.table}\NormalTok{(}\StringTok{'../data/Transform2_V2.txt'}\NormalTok{, }\DataTypeTok{header=}\OtherTok{TRUE}\NormalTok{))}
+\NormalTok{minmax_scaler <-}\StringTok{ }\ControlFlowTok{function}\NormalTok{(x) \{}
+    \KeywordTok{return}\NormalTok{((x}\OperatorTok{-}\KeywordTok{min}\NormalTok{(x))}\OperatorTok{/}\NormalTok{(}\KeywordTok{max}\NormalTok{(x)}\OperatorTok{-}\KeywordTok{min}\NormalTok{(x)))}
+\NormalTok{\}}
+
+
+\NormalTok{transform <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}\KeywordTok{read.table}\NormalTok{(}\StringTok{'../data/Transform_V2.txt'}\NormalTok{, }\DataTypeTok{header=}\OtherTok{TRUE}\NormalTok{))}
+\NormalTok{trm1 <-}\StringTok{ }\KeywordTok{lm}\NormalTok{(y }\OperatorTok{~}\StringTok{ }\NormalTok{x1 }\OperatorTok{+}\StringTok{ }\KeywordTok{sqrt}\NormalTok{(x2}\OperatorTok{+}\DecValTok{1}\NormalTok{) }\OperatorTok{+}\StringTok{ }\KeywordTok{minmax_scaler}\NormalTok{(}\KeywordTok{sqrt}\NormalTok{(x3)), }\DataTypeTok{data=}\NormalTok{transform)}
+\KeywordTok{plot}\NormalTok{(trm1)}
 \end{Highlighting}
 \end{Shaded}
+
+\includegraphics{./figures/unnamed-chunk-16-1.pdf}
+\includegraphics{./figures/unnamed-chunk-16-2.pdf}
+\includegraphics{./figures/unnamed-chunk-16-3.pdf}
+\includegraphics{./figures/unnamed-chunk-16-4.pdf}
 
 \end{document}

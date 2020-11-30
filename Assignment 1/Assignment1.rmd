@@ -5,8 +5,13 @@ date: "November 24th, 2020"
 output: 'pdf_document'
 ---
 
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+collapse = TRUE,
+comment = '#>',
+fig.path = './figures/'
+)
 ```
 
 Importing libraries
@@ -199,8 +204,12 @@ is our expression for the $(1-\alpha)\%$ confidence interval for $\hat{Y_{h}}$ w
 # Exercise 10
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-transform <- data.frame(read.table('../data/Transform2_V2.txt', header=TRUE))
-trm1 <- lm(y2 ~ x1, data=transform)
-trm2 <- lm(y2 ~ x2, data=transform)
+minmax_scaler <- function(x) {
+    return((x-min(x))/(max(x)-min(x)))
+}
 
+
+transform <- data.frame(read.table('../data/Transform_V2.txt', header=TRUE))
+trm1 <- lm(y ~ x1 + sqrt(x2+1) + minmax_scaler(sqrt(x3)), data=transform)
+plot(trm1)
 ```
