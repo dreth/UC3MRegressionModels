@@ -117,6 +117,7 @@ Importing libraries
 \begin{Highlighting}[]
 \KeywordTok{library}\NormalTok{(dplyr)}
 \KeywordTok{library}\NormalTok{(MuMIn)}
+\KeywordTok{library}\NormalTok{(MASS)}
 \end{Highlighting}
 \end{Shaded}
 
@@ -310,20 +311,6 @@ The residuals are orthogonal to the fitted values
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\CommentTok{# rsq <- function(x,y) cor(x,y)^2}
-\CommentTok{# cols <- names(bodyfat)[1:length(names(bodyfat))-1]}
-\CommentTok{# r_2 <- c()}
-\CommentTok{# names(r_2) <- cols}
-\CommentTok{# for (i in 1:length(cols)) \{}
-\CommentTok{#     modall <- lm(hwfat ~ cols[i], bodyfat)}
-\CommentTok{#     r_2 <- rsq(predict(hwfat))}
-\CommentTok{# \}}
-\CommentTok{# r2}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{Shaded}
-\begin{Highlighting}[]
 \KeywordTok{options}\NormalTok{(}\DataTypeTok{na.action =} \StringTok{"na.fail"}\NormalTok{)}
 \NormalTok{modall <-}\StringTok{ }\KeywordTok{lm}\NormalTok{(hwfat }\OperatorTok{~}\NormalTok{., }\DataTypeTok{data =}\NormalTok{ bodyfat)}
 \NormalTok{combs <-}\StringTok{ }\KeywordTok{dredge}\NormalTok{(modall, }\DataTypeTok{extra =} \StringTok{"R^2"}\NormalTok{)}
@@ -442,7 +429,28 @@ as a result we get that the least meaningful variable (the variable that
 explains the lowest variance of the model) is the variable ht (height)
 followed by the variable wt (weight).
 
+\newpage
+
 \hypertarget{exercise-9}{%
 \section{Exercise 9}\label{exercise-9}}
+
+Given that
+\(E[\hat{Y} | X_{h}] = \hat{Y_{h}} \sim N(X_{h} \beta, \sigma^{2} X_{h} (X^{\prime} X) X_{h}^{\prime})\)
+
+\(\Rightarrow \hat{y_{h}} \pm t_{n - (k+1), \frac{\alpha}{2}} * \hat{\sigma} \sqrt{h_{ii}}\)
+
+where \(h_{ii}\) is the diagonal of our \(H\) matrix.
+
+is our expression for the \((1-\alpha)\%\) confidence interval for
+\(\hat{Y_{h}}\) when \(\sigma^{2}\) is unknown.
+
+\hypertarget{exercise-10}{%
+\section{Exercise 10}\label{exercise-10}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{transform <-}\StringTok{ }\KeywordTok{data.frame}\NormalTok{(}\KeywordTok{read.table}\NormalTok{(}\StringTok{'../data/Transform2_V2.txt'}\NormalTok{, }\DataTypeTok{header=}\OtherTok{TRUE}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
 
 \end{document}

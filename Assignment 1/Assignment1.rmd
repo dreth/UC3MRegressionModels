@@ -14,6 +14,7 @@ Importing libraries
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide"}
 library(dplyr)
 library(MuMIn)
+library(MASS)
 ```
 
 # Exercise 1
@@ -130,18 +131,6 @@ sum(residuals*Y_hat)
 # Exercise 6
 
 ```{r, echo=TRUE, warning=FALSE}
-# rsq <- function(x,y) cor(x,y)^2
-# cols <- names(bodyfat)[1:length(names(bodyfat))-1]
-# r_2 <- c()
-# names(r_2) <- cols
-# for (i in 1:length(cols)) {
-#     modall <- lm(hwfat ~ cols[i], bodyfat)
-#     r_2 <- rsq(predict(hwfat))
-# }
-# r2
-```
-
-```{r, echo=TRUE, warning=FALSE}
 options(na.action = "na.fail")
 modall <- lm(hwfat ~., data = bodyfat)
 combs <- dredge(modall, extra = "R^2")
@@ -199,3 +188,19 @@ as a result we get that the least meaningful variable (the variable that explain
 
 # Exercise 9
 
+Given that $E[\hat{Y} | X_{h}] = \hat{Y_{h}} \sim N(X_{h} \beta, \sigma^{2} X_{h} (X^{\prime} X) X_{h}^{\prime})$
+
+$\Rightarrow \hat{y_{h}} \pm t_{n - (k+1), \frac{\alpha}{2}} * \hat{\sigma} \sqrt{h_{ii}}$
+
+where $h_{ii}$ is the diagonal of our $H$ matrix.
+
+is our expression for the $(1-\alpha)\%$ confidence interval for $\hat{Y_{h}}$ when $\sigma^{2}$ is unknown.
+
+# Exercise 10
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+transform <- data.frame(read.table('../data/Transform2_V2.txt', header=TRUE))
+trm1 <- lm(y2 ~ x1, data=transform)
+trm2 <- lm(y2 ~ x2, data=transform)
+
+```
