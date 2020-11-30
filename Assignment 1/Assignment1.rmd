@@ -16,7 +16,7 @@ fig.path = './figures/'
 
 ## Installing libraries used
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide"}
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide", eval=FALSE}
 packages = c("dplyr","MuMIn","MASS","leaps","glmnet","car")
 for (package in packages) {
     install.packages(package)
@@ -34,7 +34,7 @@ library(glmnet)
 library(car)
 ```
 
-
+\newpage
 
 # Exercise 1
 
@@ -44,10 +44,12 @@ library(car)
 # terms
 s = list()
 X = list()
+
 # betas estimation
 beta_est = list()
 beta1hat = c()
 beta2hat = c()
+
 # variables
 phi = 50
 beta1 = 3
@@ -74,18 +76,78 @@ simulation <- function(mean,sd,phi,beta1,beta2,iters,size) {
     par(mfrow=c(2,1))
     hist(beta1hat)
     hist(beta2hat)
+    return(c(mean(beta1hat),mean(beta2hat)))
 }
 ```
 
+\newpage
+
 ```{r, echo=TRUE, warning=FALSE, results='hide', fig.height=6}
-simulation(mean=0, sd=1, phi=phi, beta1=beta1, beta2=beta2, iters=1000, size=100)
+means <- simulation(mean=0, sd=1, phi=phi, beta1=beta1, beta2=beta2, iters=1000, size=100)
 ```
 
 We know that the estimate is unbiased if its expected value of our estimators is equal to the real value of our estimators (in this case $E[ \hat{\beta_{1}}]) = \beta_{1}$ and $E[ \hat{\beta_{2}}]) = \beta_{2}$ as the sample size $n \rightarrow \inf$.
 
+We can test for this with our 1000 simulation sample:
 
+```{r, echo=TRUE, warning=FALSE}
+print(means)
+```
 
+Calculating a relative error for each one of these values:
 
+```{r, echo=TRUE, warning=FALSE}
+betas = c(beta1,beta2)
+for (i in 1:length(means)) {
+    print(paste("beta ",i, " hat has a relative error of: ", abs(means[i]-betas[i])/betas[i]))
+}   
+```
+
+Which are <1% incorrect versus the real betas, therefore, these estimators are unbiased.
+
+\newpage
+
+If we increase the value of sigma by ~10x the original value ($\sigma = 1$):
+
+```{r, echo=TRUE, warning=FALSE, fig.height=6}
+means <- simulation(mean=0, sd=10, phi=phi, beta1=beta1, beta2=beta2, iters=1000, size=100)
+```
+
+```{r, echo=TRUE, warning=FALSE}
+print(means)
+```
+
+```{r, echo=TRUE, warning=FALSE}
+betas = c(beta1,beta2)
+for (i in 1:length(means)) {
+    print(paste("beta ",i, " hat has a relative error of: ", abs(means[i]-betas[i])/betas[i]))
+}
+```
+
+We can see that our relative error increases, therefore our estimation would either require a significantly larger amount of iterations to reach a the same estimation accuracy. So then we could say that our residuals being a lot more disperse can measurably affect the accuracy of our prediction.
+
+\newpage
+
+If we increase the value of sigma by ~1000x the original value ($\sigma = 1$):
+
+```{r, echo=TRUE, warning=FALSE, fig.height=6}
+means <- simulation(mean=0, sd=1000, phi=phi, beta1=beta1, beta2=beta2, iters=1000, size=100)
+```
+
+```{r, echo=TRUE, warning=FALSE}
+print(means)
+```
+
+```{r, echo=TRUE, warning=FALSE}
+betas = c(beta1,beta2)
+for (i in 1:length(means)) {
+    print(paste("beta ",i, " hat has a relative error of: ", abs(means[i]-betas[i])/betas[i]))
+}
+```
+
+In an attempt to show a waaaaay worse scenario, here we can see our relative error is not only large but, having tried running this a few times, the relative error can reach massive amounts, being, at times, even way higher than 100% wrong. 
+
+\newpage
 
 # Exercise 2
 

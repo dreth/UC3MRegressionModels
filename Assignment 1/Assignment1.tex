@@ -111,7 +111,20 @@
 \begin{document}
 \maketitle
 
-Importing libraries
+\hypertarget{installing-libraries-used}{%
+\subsection{Installing libraries used}\label{installing-libraries-used}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{packages =}\StringTok{ }\KeywordTok{c}\NormalTok{(}\StringTok{"dplyr"}\NormalTok{,}\StringTok{"MuMIn"}\NormalTok{,}\StringTok{"MASS"}\NormalTok{,}\StringTok{"leaps"}\NormalTok{,}\StringTok{"glmnet"}\NormalTok{,}\StringTok{"car"}\NormalTok{)}
+\ControlFlowTok{for}\NormalTok{ (package }\ControlFlowTok{in}\NormalTok{ packages) \{}
+    \KeywordTok{install.packages}\NormalTok{(package)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{importing-libraries}{%
+\subsection{Importing libraries}\label{importing-libraries}}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -124,6 +137,8 @@ Importing libraries
 \end{Highlighting}
 \end{Shaded}
 
+\newpage
+
 \hypertarget{exercise-1}{%
 \section{Exercise 1}\label{exercise-1}}
 
@@ -135,10 +150,12 @@ Importing libraries
 \CommentTok{# terms}
 \NormalTok{s =}\StringTok{ }\KeywordTok{list}\NormalTok{()}
 \NormalTok{X =}\StringTok{ }\KeywordTok{list}\NormalTok{()}
+
 \CommentTok{# betas estimation}
 \NormalTok{beta_est =}\StringTok{ }\KeywordTok{list}\NormalTok{()}
 \NormalTok{beta1hat =}\StringTok{ }\KeywordTok{c}\NormalTok{()}
 \NormalTok{beta2hat =}\StringTok{ }\KeywordTok{c}\NormalTok{()}
+
 \CommentTok{# variables}
 \NormalTok{phi =}\StringTok{ }\DecValTok{50}
 \NormalTok{beta1 =}\StringTok{ }\DecValTok{3}
@@ -165,23 +182,128 @@ Importing libraries
     \KeywordTok{par}\NormalTok{(}\DataTypeTok{mfrow=}\KeywordTok{c}\NormalTok{(}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{))}
     \KeywordTok{hist}\NormalTok{(beta1hat)}
     \KeywordTok{hist}\NormalTok{(beta2hat)}
+    \KeywordTok{return}\NormalTok{(}\KeywordTok{c}\NormalTok{(}\KeywordTok{mean}\NormalTok{(beta1hat),}\KeywordTok{mean}\NormalTok{(beta2hat)))}
 \NormalTok{\}}
 \end{Highlighting}
 \end{Shaded}
 
+\newpage
+
 \begin{Shaded}
 \begin{Highlighting}[]
-\KeywordTok{simulation}\NormalTok{(}\DataTypeTok{mean=}\DecValTok{0}\NormalTok{, }\DataTypeTok{sd=}\DecValTok{1}\NormalTok{, }\DataTypeTok{phi=}\NormalTok{phi, }\DataTypeTok{beta1=}\NormalTok{beta1, }\DataTypeTok{beta2=}\NormalTok{beta2, }\DataTypeTok{iters=}\DecValTok{1000}\NormalTok{, }\DataTypeTok{size=}\DecValTok{100}\NormalTok{)}
+\NormalTok{means <-}\StringTok{ }\KeywordTok{simulation}\NormalTok{(}\DataTypeTok{mean=}\DecValTok{0}\NormalTok{, }\DataTypeTok{sd=}\DecValTok{1}\NormalTok{, }\DataTypeTok{phi=}\NormalTok{phi, }\DataTypeTok{beta1=}\NormalTok{beta1, }\DataTypeTok{beta2=}\NormalTok{beta2, }\DataTypeTok{iters=}\DecValTok{1000}\NormalTok{, }\DataTypeTok{size=}\DecValTok{100}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-3-1.pdf}
+\includegraphics{./figures/unnamed-chunk-4-1.pdf}
 
 We know that the estimate is unbiased if its expected value of our
 estimators is equal to the real value of our estimators (in this case
 \(E[ \hat{\beta_{1}}]) = \beta_{1}\) and
 \(E[ \hat{\beta_{2}}]) = \beta_{2}\) as the sample size
 \(n \rightarrow \inf\).
+
+We can test for this with our 1000 simulation sample:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{print}\NormalTok{(means)}
+\CommentTok{#> [1] 3.003231 2.995873}
+\end{Highlighting}
+\end{Shaded}
+
+Calculating a relative error for each one of these values:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{betas =}\StringTok{ }\KeywordTok{c}\NormalTok{(beta1,beta2)}
+\ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
+    \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
+\NormalTok{\}   }
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.00107715176850961"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.00137580030629625"}
+\end{Highlighting}
+\end{Shaded}
+
+Which are \textless{}1\% incorrect versus the real betas, therefore,
+these estimators are unbiased.
+
+\newpage
+
+If we increase the value of sigma by \textasciitilde{}10x the original
+value (\(\sigma = 1\)):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{means <-}\StringTok{ }\KeywordTok{simulation}\NormalTok{(}\DataTypeTok{mean=}\DecValTok{0}\NormalTok{, }\DataTypeTok{sd=}\DecValTok{10}\NormalTok{, }\DataTypeTok{phi=}\NormalTok{phi, }\DataTypeTok{beta1=}\NormalTok{beta1, }\DataTypeTok{beta2=}\NormalTok{beta2, }\DataTypeTok{iters=}\DecValTok{1000}\NormalTok{, }\DataTypeTok{size=}\DecValTok{100}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{./figures/unnamed-chunk-7-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{print}\NormalTok{(means)}
+\CommentTok{#> [1] 2.934653 3.041834}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{betas =}\StringTok{ }\KeywordTok{c}\NormalTok{(beta1,beta2)}
+\ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
+    \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
+\NormalTok{\}}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.0217823161811492"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.0139447893946369"}
+\end{Highlighting}
+\end{Shaded}
+
+We can see that our relative error increases, therefore our estimation
+would either require a significantly larger amount of iterations to
+reach a the same estimation accuracy. So then we could say that our
+residuals being a lot more disperse can measurably affect the accuracy
+of our prediction.
+
+\newpage
+
+If we increase the value of sigma by \textasciitilde{}1000x the original
+value (\(\sigma = 1\)):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{means <-}\StringTok{ }\KeywordTok{simulation}\NormalTok{(}\DataTypeTok{mean=}\DecValTok{0}\NormalTok{, }\DataTypeTok{sd=}\DecValTok{1000}\NormalTok{, }\DataTypeTok{phi=}\NormalTok{phi, }\DataTypeTok{beta1=}\NormalTok{beta1, }\DataTypeTok{beta2=}\NormalTok{beta2, }\DataTypeTok{iters=}\DecValTok{1000}\NormalTok{, }\DataTypeTok{size=}\DecValTok{100}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{./figures/unnamed-chunk-10-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{print}\NormalTok{(means)}
+\CommentTok{#> [1] 6.856831 5.014018}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{betas =}\StringTok{ }\KeywordTok{c}\NormalTok{(beta1,beta2)}
+\ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
+    \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
+\NormalTok{\}}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  1.28561024902312"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.671339263905679"}
+\end{Highlighting}
+\end{Shaded}
+
+In an attempt to show a waaaaay worse scenario, here we can see our
+relative error is not only large but, having tried running this a few
+times, the relative error can reach massive amounts, being, at times,
+more than 100\% wrong.
+
+\newpage
+
+\newpage
 
 \hypertarget{exercise-2}{%
 \section{Exercise 2}\label{exercise-2}}
@@ -538,7 +660,7 @@ is our expression for the \((1-\alpha)\%\) confidence interval for
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-20-1.pdf}
+\includegraphics{./figures/unnamed-chunk-29-1.pdf}
 
 We can see that the square root transformation is appropriate for the
 \(X_{2}\) variable
@@ -552,7 +674,7 @@ We can see that the square root transformation is appropriate for the
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-21-1.pdf}
+\includegraphics{./figures/unnamed-chunk-30-1.pdf}
 
 We can see that the \(X^{2}\) transformation is appropriate for the
 \(X_{3}\) variable
@@ -585,7 +707,7 @@ We can see that the \(X^{2}\) transformation is appropriate for the
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-23-1.pdf}
+\includegraphics{./figures/unnamed-chunk-32-1.pdf}
 
 Neither variable has constant variance, therefore we apply a boxcox
 transformation to both \(X_{2}\) and \(X_{3}\).
@@ -598,7 +720,7 @@ transformation to both \(X_{2}\) and \(X_{3}\).
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-24-1.pdf}
+\includegraphics{./figures/unnamed-chunk-33-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -606,7 +728,7 @@ transformation to both \(X_{2}\) and \(X_{3}\).
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-25-1.pdf}
+\includegraphics{./figures/unnamed-chunk-34-1.pdf}
 
 \newpage
 
@@ -624,7 +746,7 @@ boxcox transformation using \(\lambda = -1\).
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{./figures/unnamed-chunk-26-1.pdf}
+\includegraphics{./figures/unnamed-chunk-35-1.pdf}
 
 Here we see the situation has improved significantly and we now have
 constant variance.
