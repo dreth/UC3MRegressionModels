@@ -49,6 +49,9 @@ X = d$PovPct
 Y = d$Brth15to17
 beta1 = cov(X, Y)/var(X)
 beta0 = mean(Y) - beta1*mean(X)
+```
+
+```{r, echo=TRUE, warning=FALSE}
 beta1
 beta0
 ```
@@ -65,7 +68,7 @@ $\propto - \frac{n}{2} log(\sigma^{2}) - \frac{(Y - X \beta) \prime (Y - X \beta
 
 Differentiating the second expression:
 
-$\frac{\partial l}{\partial \sigma} ( - \frac{n}{2} log(\sigma^{2}) - \frac{(Y - X \beta) \prime (Y - X \beta)}{2 \sigma^{2}} = 0$
+$\frac{\partial l}{\partial \sigma} ( - \frac{n}{2} log(\sigma^{2}) - \frac{(Y - X \beta) \prime (Y - X \beta)}{2 \sigma^{2}}) = 0$
 
 We get:
 
@@ -86,6 +89,8 @@ $\hat{\sigma^{2}} = \frac{(Y - X \beta) \prime (Y - X \beta)}{n}$
 Which is our maximum likelihood estimator for $\sigma^2$
 
 # Exercise 4
+
+\newpage
 
 # Exercise 5
 
@@ -120,6 +125,8 @@ The residuals are orthogonal to the fitted values
 sum(residuals*Y_hat)
 ```
 
+\newpage
+
 # Exercise 6
 
 ```{r, echo=TRUE, warning=FALSE}
@@ -141,4 +148,54 @@ combs <- dredge(modall, extra = "R^2")
 print("best model")
 combs[combs$"R^2" == max(combs$"R^2")]
 ```
+
+# Exercise 7
+
+\newpage
+
+# Exercise 8
+
+We define a list with all the models excluding, in each one, a single variable.
+
+```{r, echo=TRUE, warning=FALSE}
+models <- list()
+vars <- c("age","ht","wt","abs","triceps","subscap")
+models[[1]] <- update(modall,.~.-age)
+models[[2]] <- update(modall,.~.-ht)
+models[[3]] <- update(modall,.~.-wt)
+models[[4]] <- update(modall,.~.-abs)
+models[[5]] <- update(modall,.~.-triceps)
+models[[6]] <- update(modall,.~.-subscap)
+```
+
+We run ANOVA with both the models without each variable and the main model including all the other variables.
+
+We can see the pvalues for the ANOVA where each specific variable was excluded:
+
+```{r, echo=TRUE, warning=FALSE}
+anovas <- list()
+pvalues <- c()
+amount_of_vars <- length(names(bodyfat))-1
+for (i in 1:amount_of_vars) {
+    anovas[[i]] <- anova(models[[i]],modall)
+    pvalues <- c(pvalues, sum(anovas[[i]][2,"Pr(>F)"]))
+}
+for (i in 1:length(vars)) {
+    print(paste("excluding: ", vars[i], ": ", pvalues[i] , sep=""))
+}
+```
+
+Then we compare with summary:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+summary(modall)[4]
+```
+
+And we can see we get the same pvalues in the summary. Therefore viewing the summary can be a much faster version of performing such testing.
+
+as a result we get that the least meaningful variable (the variable that explains the lowest variance of the model) is the variable ht (height) followed by the variable wt (weight).
+
+\newpage
+
+# Exercise 9
 

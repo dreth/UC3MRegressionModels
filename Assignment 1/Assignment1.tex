@@ -159,6 +159,11 @@ Importing libraries
 \NormalTok{Y =}\StringTok{ }\NormalTok{d}\OperatorTok{$}\NormalTok{Brth15to17}
 \NormalTok{beta1 =}\StringTok{ }\KeywordTok{cov}\NormalTok{(X, Y)}\OperatorTok{/}\KeywordTok{var}\NormalTok{(X)}
 \NormalTok{beta0 =}\StringTok{ }\KeywordTok{mean}\NormalTok{(Y) }\OperatorTok{-}\StringTok{ }\NormalTok{beta1}\OperatorTok{*}\KeywordTok{mean}\NormalTok{(X)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
 \NormalTok{beta1}
 \end{Highlighting}
 \end{Shaded}
@@ -191,7 +196,7 @@ First we have the log-likelihood function for \(\beta\) and
 
 Differentiating the second expression:
 
-\(\frac{\partial l}{\partial \sigma} ( - \frac{n}{2} log(\sigma^{2}) - \frac{(Y - X \beta) \prime (Y - X \beta)}{2 \sigma^{2}} = 0\)
+\(\frac{\partial l}{\partial \sigma} ( - \frac{n}{2} log(\sigma^{2}) - \frac{(Y - X \beta) \prime (Y - X \beta)}{2 \sigma^{2}}) = 0\)
 
 We get:
 
@@ -213,6 +218,8 @@ Which is our maximum likelihood estimator for \(\sigma^2\)
 
 \hypertarget{exercise-4}{%
 \section{Exercise 4}\label{exercise-4}}
+
+\newpage
 
 \hypertarget{exercise-5}{%
 \section{Exercise 5}\label{exercise-5}}
@@ -296,6 +303,8 @@ The residuals are orthogonal to the fitted values
 ## [1] -1.568657e-11
 \end{verbatim}
 
+\newpage
+
 \hypertarget{exercise-6}{%
 \section{Exercise 6}\label{exercise-6}}
 
@@ -351,5 +360,89 @@ The residuals are orthogonal to the fitted values
 ## 64 404.9  5.58      1
 ## Models ranked by AICc(x)
 \end{verbatim}
+
+\hypertarget{exercise-7}{%
+\section{Exercise 7}\label{exercise-7}}
+
+\newpage
+
+\hypertarget{exercise-8}{%
+\section{Exercise 8}\label{exercise-8}}
+
+We define a list with all the models excluding, in each one, a single
+variable.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{models <-}\StringTok{ }\KeywordTok{list}\NormalTok{()}
+\NormalTok{vars <-}\StringTok{ }\KeywordTok{c}\NormalTok{(}\StringTok{"age"}\NormalTok{,}\StringTok{"ht"}\NormalTok{,}\StringTok{"wt"}\NormalTok{,}\StringTok{"abs"}\NormalTok{,}\StringTok{"triceps"}\NormalTok{,}\StringTok{"subscap"}\NormalTok{)}
+\NormalTok{models[[}\DecValTok{1}\NormalTok{]] <-}\StringTok{ }\KeywordTok{update}\NormalTok{(modall,.}\OperatorTok{~}\NormalTok{.}\OperatorTok{-}\NormalTok{age)}
+\NormalTok{models[[}\DecValTok{2}\NormalTok{]] <-}\StringTok{ }\KeywordTok{update}\NormalTok{(modall,.}\OperatorTok{~}\NormalTok{.}\OperatorTok{-}\NormalTok{ht)}
+\NormalTok{models[[}\DecValTok{3}\NormalTok{]] <-}\StringTok{ }\KeywordTok{update}\NormalTok{(modall,.}\OperatorTok{~}\NormalTok{.}\OperatorTok{-}\NormalTok{wt)}
+\NormalTok{models[[}\DecValTok{4}\NormalTok{]] <-}\StringTok{ }\KeywordTok{update}\NormalTok{(modall,.}\OperatorTok{~}\NormalTok{.}\OperatorTok{-}\NormalTok{abs)}
+\NormalTok{models[[}\DecValTok{5}\NormalTok{]] <-}\StringTok{ }\KeywordTok{update}\NormalTok{(modall,.}\OperatorTok{~}\NormalTok{.}\OperatorTok{-}\NormalTok{triceps)}
+\NormalTok{models[[}\DecValTok{6}\NormalTok{]] <-}\StringTok{ }\KeywordTok{update}\NormalTok{(modall,.}\OperatorTok{~}\NormalTok{.}\OperatorTok{-}\NormalTok{subscap)}
+\end{Highlighting}
+\end{Shaded}
+
+We run ANOVA with both the models without each variable and the main
+model including all the other variables.
+
+We can see the pvalues for the ANOVA where each specific variable was
+excluded:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{anovas <-}\StringTok{ }\KeywordTok{list}\NormalTok{()}
+\NormalTok{pvalues <-}\StringTok{ }\KeywordTok{c}\NormalTok{()}
+\NormalTok{amount_of_vars <-}\StringTok{ }\KeywordTok{length}\NormalTok{(}\KeywordTok{names}\NormalTok{(bodyfat))}\OperatorTok{-}\DecValTok{1}
+\ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\NormalTok{amount_of_vars) \{}
+\NormalTok{    anovas[[i]] <-}\StringTok{ }\KeywordTok{anova}\NormalTok{(models[[i]],modall)}
+\NormalTok{    pvalues <-}\StringTok{ }\KeywordTok{c}\NormalTok{(pvalues, }\KeywordTok{sum}\NormalTok{(anovas[[i]][}\DecValTok{2}\NormalTok{,}\StringTok{"Pr(>F)"}\NormalTok{]))}
+\NormalTok{\}}
+\ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(vars)) \{}
+    \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"excluding: "}\NormalTok{, vars[i], }\StringTok{": "}\NormalTok{, pvalues[i] , }\DataTypeTok{sep=}\StringTok{""}\NormalTok{))}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "excluding: age: 0.30983932449522"
+## [1] "excluding: ht: 0.67622546378066"
+## [1] "excluding: wt: 0.599878887504826"
+## [1] "excluding: abs: 7.54898491342447e-05"
+## [1] "excluding: triceps: 0.00630111253287972"
+## [1] "excluding: subscap: 0.424314507846979"
+\end{verbatim}
+
+Then we compare with summary:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{summary}\NormalTok{(modall)[}\DecValTok{4}\NormalTok{]}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## $coefficients
+##                Estimate Std. Error    t value     Pr(>|t|)
+## (Intercept) 13.29369860 9.63026704  1.3804081 1.717917e-01
+## age         -0.32893403 0.32157778 -1.0228755 3.098393e-01
+## ht          -0.06730905 0.16050751 -0.4193514 6.762255e-01
+## wt          -0.01365183 0.02590783 -0.5269385 5.998789e-01
+## abs          0.37141976 0.08836595  4.2032001 7.548985e-05
+## triceps      0.38742647 0.13761017  2.8153912 6.301113e-03
+## subscap      0.11405213 0.14192779  0.8035927 4.243145e-01
+\end{verbatim}
+
+And we can see we get the same pvalues in the summary. Therefore viewing
+the summary can be a much faster version of performing such testing.
+
+as a result we get that the least meaningful variable (the variable that
+explains the lowest variance of the model) is the variable ht (height)
+followed by the variable wt (weight).
+
+\hypertarget{exercise-9}{%
+\section{Exercise 9}\label{exercise-9}}
 
 \end{document}
