@@ -203,7 +203,7 @@ Which is our maximum likelihood estimator for $\sigma^2$
 
 # Exercise 4
 
-1- $\sum_{i=1}^n \hat{\epsilon_i}$
+**1 - $\sum_{i=1}^n \hat{\epsilon_i}$**
 
 $\hat{\epsilon} = Y - \hat{Y} = (I-H)Y$
 
@@ -212,6 +212,50 @@ $\sum_{i=0}^n \hat{\epsilon_i} = I^{\prime} \hat{\epsilon} = I^{\prime} (I - H)^
 Given that the matrix $(I - H)$ is eigenpotent:
 
 $\Rightarrow$ $((I-H)(I))^{\prime} Y = 0^{\prime} Y = 0$
+
+$((I-H)(I))^{\prime} = 0$ (if the regressor matrix contains a col. of ones.)
+
+**2 - $\sum_{i=1}^n  y_i = \sum_{i=1}^n \hat{y_i}$**
+
+$Y = X(X^{\prime} X)^{-1} X^{\prime} Y$
+
+$Y = HY$
+
+And because $\hat{\epsilon} = (I-H)Y$
+
+then:
+
+$\hat{\epsilon} = IY - HY$
+
+$\hat{\epsilon} = 0$
+
+$0 = Y - HY$
+
+$HY = Y$
+
+therefore:
+
+$\hat{Y} = Y$
+
+**3 - $\sum_{i=1}^n x_i \hat{\epsilon_i} = 0$**
+
+$\sum_{i=1}^n x_i \hat{\epsilon_i} = \hat{\epsilon}^{\prime} = (Y-X \hat{\beta})^{\prime} X$
+
+= $(Y - X(X^{\prime} X)^{-1} X^{\prime} Y)^{\prime} X$
+
+= $(Y^{\prime} (X - X(X^{\prime} X)^{-1} X^{\prime} X))$
+
+= $Y^{\prime} (X-X) = 0$
+
+**4 - $\sum_{i=1}^n \hat{y_i} \hat{\epsilon_i} = 0$**
+
+$X \hat{\beta} \hat{\epsilon_i} = \hat{\epsilon_i}^{\prime} X \hat{\beta} = (Y - X \hat{\beta})^{\prime} X \hat{\beta}$
+
+= $(Y - X(X^{\prime} X)^{-1} X^{\prime} Y) X \hat{\beta}$
+
+= $Y^{\prime} (X - X(X^{\prime} X)^{-1} X^{\prime} X) \beta$
+
+= $Y^{\prime} (X-X) \hat{\beta} = 0$
 
 
 
@@ -262,9 +306,7 @@ modall <- lm(hwfat ~., data = bodyfat)
 combs <- leaps::regsubsets(bodyfat[,1:6],bodyfat[,7])
 summary(combs)
 ```
-
-And their corresponding $R^{2} values:
-
+vif_mc(bodyfat[1:6])
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 summary(combs)$adjr2
 ```
@@ -496,7 +538,6 @@ vif_mc <- function(X) {
             } else {
                 other_vars = ov[j]
             }
-            
         }
         model <- lm(paste(variables[i], "~", other_vars), data=X)
         result <- c(result, 1/(1-((cor(X[i],fitted(model)))^2)))
@@ -517,3 +558,45 @@ We can see that we get the same values as with the original VIF function from th
 \newpage
 
 # Exercise 14
+
+We find the $R^2$ and $\bar{R^2}$ for the model *modall*:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+print(paste("R^2: ", summary(modall)$r.squared))
+print(paste("Adjusted R^2: ", summary(modall)$adj.r.squared))
+```
+
+We generate a ridge model for our bodyfat dataset:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+X <- model.matrix(hwfat ~., data=bodyfat)
+fit.ridge <- glmnet(X, bodyfat$hwfat, alpha=0)
+```
+
+We perform $CV$ to calculate the $R^2$ and $\bar{R^2}$ for our ridge model, first the $R^2$:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+cv.out <- cv.glmnet(X, bodyfat$hwfat, alpha = 0)
+opt_lambda <- cv.out$lambda.min
+pred <- predict(fit.ridge, s=opt_lambda, newx=X)
+ridge_rsq <- (cor(pred,bodyfat$hwfat))^2
+ridge_rsq
+```
+
+And the $\bar{R^2}$:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+size <- length(bodyfat$hwfat)
+variables <- length(bodyfat)-1 
+ridge_adj_rsq <- 1 - (1-ridge_rsq) * ((size-1)/(size-variables-1))
+ridge_adj_rsq
+```
+
+Comparing our results:
+
+For lm: $R^2 = 0.891812495297119$
+
+Which is slightly higher than the result for our ridge model:  $R^2 = 0.8882041$, However, we can't immediately say that the linear model is better than our ridge model only by looking at $R^2$, but from a preliminary standpoint, it seems *slightly* better.
+
+We can see a similar situation with the $\bar{R^2}$, where for our lm, the $\bar{R^2} = 0.88266988926589$ and for our ridge model the $\bar{R^2} = 0.8787565$. Therefore, again, in terms of $R^2$ or $\bar{R^2}$ tells us that the difference between these two models for this specific variable selection isn't very significant.
+

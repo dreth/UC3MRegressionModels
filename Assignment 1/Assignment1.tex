@@ -208,7 +208,7 @@ We can test for this with our 1000 simulation sample:
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1] 3.000306 3.000889}
+\CommentTok{#> [1] 2.998764 2.993937}
 \end{Highlighting}
 \end{Shaded}
 
@@ -220,8 +220,8 @@ Calculating a relative error for each one of these values:
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}   }
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.000101932405042267"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.000296424059367251"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.000411952580021691"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.00202104900735763"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -244,7 +244,7 @@ value (\(\sigma = 1\)):
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1] 2.959975 2.999230}
+\CommentTok{#> [1] 3.023202 3.002177}
 \end{Highlighting}
 \end{Shaded}
 
@@ -254,8 +254,8 @@ value (\(\sigma = 1\)):
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}}
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.0133415513964946"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.000256666396938184"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.00773388179656109"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.000725583353614094"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -281,7 +281,7 @@ value (\(\sigma = 1\)):
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1] 7.199174 5.353528}
+\CommentTok{#> [1] 6.535850 4.257124}
 \end{Highlighting}
 \end{Shaded}
 
@@ -291,8 +291,8 @@ value (\(\sigma = 1\)):
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}}
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  1.39972470642771"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.78450940243512"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  1.17861666059515"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.419041274464167"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -370,7 +370,7 @@ Which is our maximum likelihood estimator for \(\sigma^2\)
 \hypertarget{exercise-4}{%
 \section{Exercise 4}\label{exercise-4}}
 
-1- \(\sum_{i=1}^n \hat{\epsilon_i}\)
+\textbf{1 - \(\sum_{i=1}^n \hat{\epsilon_i}\)}
 
 \(\hat{\epsilon} = Y - \hat{Y} = (I-H)Y\)
 
@@ -379,6 +379,51 @@ Which is our maximum likelihood estimator for \(\sigma^2\)
 Given that the matrix \((I - H)\) is eigenpotent:
 
 \(\Rightarrow\) \(((I-H)(I))^{\prime} Y = 0^{\prime} Y = 0\)
+
+\(((I-H)(I))^{\prime} = 0\) (if the regressor matrix contains a col. of
+ones.)
+
+\textbf{2 - \(\sum_{i=1}^n y_i = \sum_{i=1}^n \hat{y_i}\)}
+
+\(Y = X(X^{\prime} X)^{-1} X^{\prime} Y\)
+
+\(Y = HY\)
+
+And because \(\hat{\epsilon} = (I-H)Y\)
+
+then:
+
+\(\hat{\epsilon} = IY - HY\)
+
+\(\hat{\epsilon} = 0\)
+
+\(0 = Y - HY\)
+
+\(HY = Y\)
+
+therefore:
+
+\(\hat{Y} = Y\)
+
+\textbf{3 - \(\sum_{i=1}^n x_i \hat{\epsilon_i} = 0\)}
+
+\(\sum_{i=1}^n x_i \hat{\epsilon_i} = \hat{\epsilon}^{\prime} = (Y-X \hat{\beta})^{\prime} X\)
+
+= \((Y - X(X^{\prime} X)^{-1} X^{\prime} Y)^{\prime} X\)
+
+= \((Y^{\prime} (X - X(X^{\prime} X)^{-1} X^{\prime} X))\)
+
+= \(Y^{\prime} (X-X) = 0\)
+
+\textbf{4 - \(\sum_{i=1}^n \hat{y_i} \hat{\epsilon_i} = 0\)}
+
+\(X \hat{\beta} \hat{\epsilon_i} = \hat{\epsilon_i}^{\prime} X \hat{\beta} = (Y - X \hat{\beta})^{\prime} X \hat{\beta}\)
+
+= \((Y - X(X^{\prime} X)^{-1} X^{\prime} Y) X \hat{\beta}\)
+
+= \(Y^{\prime} (X - X(X^{\prime} X)^{-1} X^{\prime} X) \beta\)
+
+= \(Y^{\prime} (X-X) \hat{\beta} = 0\)
 
 \newpage
 
@@ -487,7 +532,7 @@ We use regsubsets to find the best model combinations by adjusted
 \end{Highlighting}
 \end{Shaded}
 
-And their corresponding \$R\^{}\{2\} values:
+vif\_mc(bodyfat{[}1:6{]})
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -817,7 +862,6 @@ model corresponding to that loop and adding these elements to a list.
 \NormalTok{            \} }\ControlFlowTok{else}\NormalTok{ \{}
 \NormalTok{                other_vars =}\StringTok{ }\NormalTok{ov[j]}
 \NormalTok{            \}}
-            
 \NormalTok{        \}}
 \NormalTok{        model <-}\StringTok{ }\KeywordTok{lm}\NormalTok{(}\KeywordTok{paste}\NormalTok{(variables[i], }\StringTok{"~"}\NormalTok{, other_vars), }\DataTypeTok{data=}\NormalTok{X)}
 \NormalTok{        result <-}\StringTok{ }\KeywordTok{c}\NormalTok{(result, }\DecValTok{1}\OperatorTok{/}\NormalTok{(}\DecValTok{1}\OperatorTok{-}\NormalTok{((}\KeywordTok{cor}\NormalTok{(X[i],}\KeywordTok{fitted}\NormalTok{(model)))}\OperatorTok{^}\DecValTok{2}\NormalTok{)))}
@@ -845,5 +889,68 @@ from the \emph{car} library.
 
 \hypertarget{exercise-14}{%
 \section{Exercise 14}\label{exercise-14}}
+
+We find the \(R^2\) and \(\bar{R^2}\) for the model \emph{modall}:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"R^2: "}\NormalTok{, }\KeywordTok{summary}\NormalTok{(modall)}\OperatorTok{$}\NormalTok{r.squared))}
+\CommentTok{#> [1] "R^2:  0.891812495297119"}
+\KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"Adjusted R^2: "}\NormalTok{, }\KeywordTok{summary}\NormalTok{(modall)}\OperatorTok{$}\NormalTok{adj.r.squared))}
+\CommentTok{#> [1] "Adjusted R^2:  0.88266988926589"}
+\end{Highlighting}
+\end{Shaded}
+
+We generate a ridge model for our bodyfat dataset:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{X <-}\StringTok{ }\KeywordTok{model.matrix}\NormalTok{(hwfat }\OperatorTok{~}\NormalTok{., }\DataTypeTok{data=}\NormalTok{bodyfat)}
+\NormalTok{fit.ridge <-}\StringTok{ }\KeywordTok{glmnet}\NormalTok{(X, bodyfat}\OperatorTok{$}\NormalTok{hwfat, }\DataTypeTok{alpha=}\DecValTok{0}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+We perform \(CV\) to calculate the \(R^2\) and \(\bar{R^2}\) for our
+ridge model, first the \(R^2\):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{cv.out <-}\StringTok{ }\KeywordTok{cv.glmnet}\NormalTok{(X, bodyfat}\OperatorTok{$}\NormalTok{hwfat, }\DataTypeTok{alpha =} \DecValTok{0}\NormalTok{)}
+\NormalTok{opt_lambda <-}\StringTok{ }\NormalTok{cv.out}\OperatorTok{$}\NormalTok{lambda.min}
+\NormalTok{pred <-}\StringTok{ }\KeywordTok{predict}\NormalTok{(fit.ridge, }\DataTypeTok{s=}\NormalTok{opt_lambda, }\DataTypeTok{newx=}\NormalTok{X)}
+\NormalTok{ridge_rsq <-}\StringTok{ }\NormalTok{(}\KeywordTok{cor}\NormalTok{(pred,bodyfat}\OperatorTok{$}\NormalTok{hwfat))}\OperatorTok{^}\DecValTok{2}
+\NormalTok{ridge_rsq}
+\CommentTok{#>        [,1]}
+\CommentTok{#> 1 0.8882041}
+\end{Highlighting}
+\end{Shaded}
+
+And the \(\bar{R^2}\):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{size <-}\StringTok{ }\KeywordTok{length}\NormalTok{(bodyfat}\OperatorTok{$}\NormalTok{hwfat)}
+\NormalTok{variables <-}\StringTok{ }\KeywordTok{length}\NormalTok{(bodyfat)}\OperatorTok{-}\DecValTok{1} 
+\NormalTok{ridge_adj_rsq <-}\StringTok{ }\DecValTok{1} \OperatorTok{-}\StringTok{ }\NormalTok{(}\DecValTok{1}\OperatorTok{-}\NormalTok{ridge_rsq) }\OperatorTok{*}\StringTok{ }\NormalTok{((size}\DecValTok{-1}\NormalTok{)}\OperatorTok{/}\NormalTok{(size}\OperatorTok{-}\NormalTok{variables}\DecValTok{-1}\NormalTok{))}
+\NormalTok{ridge_adj_rsq}
+\CommentTok{#>        [,1]}
+\CommentTok{#> 1 0.8787565}
+\end{Highlighting}
+\end{Shaded}
+
+Comparing our results:
+
+For lm: \(R^2 = 0.891812495297119\)
+
+Which is slightly higher than the result for our ridge model:
+\(R^2 = 0.8882041\), However, we can't immediately say that the linear
+model is better than our ridge model only by looking at \(R^2\), but
+from a preliminary standpoint, it seems \emph{slightly} better.
+
+We can see a similar situation with the \(\bar{R^2}\), where for our lm,
+the \(\bar{R^2} = 0.88266988926589\) and for our ridge model the
+\(\bar{R^2} = 0.8787565\). Therefore, again, in terms of \(R^2\) or
+\(\bar{R^2}\) tells us that the difference between these two models for
+this specific variable selection isn't very significant.
 
 \end{document}
