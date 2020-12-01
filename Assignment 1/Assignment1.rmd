@@ -205,6 +205,16 @@ Which is our maximum likelihood estimator for $\sigma^2$
 
 1- $\sum_{i=1}^n \hat{\epsilon_i}$
 
+$\hat{\epsilon} = Y - \hat{Y} = (I-H)Y$
+
+$\sum_{i=0}^n \hat{\epsilon_i} = I^{\prime} \hat{\epsilon} = I^{\prime} (I - H)^{\prime} Y$
+
+Given that the matrix $(I - H)$ is eigenpotent:
+
+$\Rightarrow$ $((I-H)(I))^{\prime} Y = 0^{\prime} Y = 0$
+
+
+
 \newpage
 
 # Exercise 5

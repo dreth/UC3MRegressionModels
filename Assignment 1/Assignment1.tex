@@ -208,7 +208,7 @@ We can test for this with our 1000 simulation sample:
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1] 2.998648 2.995063}
+\CommentTok{#> [1] 3.000306 3.000889}
 \end{Highlighting}
 \end{Shaded}
 
@@ -220,8 +220,8 @@ Calculating a relative error for each one of these values:
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}   }
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.000450824739430071"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.00164582858190151"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.000101932405042267"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.000296424059367251"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -244,7 +244,7 @@ value (\(\sigma = 1\)):
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1] 3.048041 3.016336}
+\CommentTok{#> [1] 2.959975 2.999230}
 \end{Highlighting}
 \end{Shaded}
 
@@ -254,8 +254,8 @@ value (\(\sigma = 1\)):
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}}
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.0160135157751419"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.00544517964421646"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.0133415513964946"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.000256666396938184"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -281,7 +281,7 @@ value (\(\sigma = 1\)):
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1]  1.773244 11.106923}
+\CommentTok{#> [1] 7.199174 5.353528}
 \end{Highlighting}
 \end{Shaded}
 
@@ -291,8 +291,8 @@ value (\(\sigma = 1\)):
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}}
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.408918539601745"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  2.70230766346048"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  1.39972470642771"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.78450940243512"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -371,6 +371,14 @@ Which is our maximum likelihood estimator for \(\sigma^2\)
 \section{Exercise 4}\label{exercise-4}}
 
 1- \(\sum_{i=1}^n \hat{\epsilon_i}\)
+
+\(\hat{\epsilon} = Y - \hat{Y} = (I-H)Y\)
+
+\(\sum_{i=0}^n \hat{\epsilon_i} = I^{\prime} \hat{\epsilon} = I^{\prime} (I - H)^{\prime} Y\)
+
+Given that the matrix \((I - H)\) is eigenpotent:
+
+\(\Rightarrow\) \(((I-H)(I))^{\prime} Y = 0^{\prime} Y = 0\)
 
 \newpage
 
@@ -832,6 +840,8 @@ Returning its values:
 
 We can see that we get the same values as with the original VIF function
 from the \emph{car} library.
+
+\newpage
 
 \hypertarget{exercise-14}{%
 \section{Exercise 14}\label{exercise-14}}
