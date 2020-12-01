@@ -169,8 +169,6 @@ beta1
 beta0
 ```
 
-\newpage
-
 # Exercise 3
 
 First we have the log-likelihood function for $\beta$ and $\sigma^{2}$
@@ -201,7 +199,11 @@ $\hat{\sigma^{2}} = \frac{(Y - X \beta) \prime (Y - X \beta)}{n}$
 
 Which is our maximum likelihood estimator for $\sigma^2$
 
+\newpage
+
 # Exercise 4
+
+1- $\sum_{i=1}^n \hat{\epsilon_i}$
 
 \newpage
 
@@ -459,13 +461,49 @@ We can see that the VIF score for **triceps**, **abs**, **wt** and **subscap** a
 
 Programming my own VIF function:
 
+The approach here is to set up a linear model using the variable who's VIF score we want to calculate in each loop using its predictors as its predictors (basically passing through the function the section of our dataframe that corresponds to predictor variables).
+
+Essentially doing the following:
+
+$X_{1} = k_{1} + k_{2} X_{2} + k_{3} X_{3} + \dots + k_{n} X_{n}$
+
+Where each $k_{i}$ is a constant, and each $X_{i}$ is a predictor.
+
+Then we calculate the VIF score for each one of them using the coefficient of determination of the fitted values of the model and the real values of the predictor that we set as dependent variable in the model corresponding to that loop and adding these elements to a list.
+
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 vif_mc <- function(X) {
+    result <- c()
     for (i in 1:(length(names(X)))) {
+        variables <- names(X)
         preds <- 1:length(names(X))
         preds <- preds[preds != i]
-        model <- lm(X[,i] ~ X[,preds])
-        print(model)
+        other_vars <- ""
+        for (j in 1:(length(names(X))-1)) {
+            ov = variables[variables != variables[i]]
+            if (j > 1) {
+                other_vars = paste(other_vars, "+" ,ov[j])
+            } else {
+                other_vars = ov[j]
+            }
+            
+        }
+        model <- lm(paste(variables[i], "~", other_vars), data=X)
+        result <- c(result, 1/(1-((cor(X[i],fitted(model)))^2)))
     }
+    names(result) <- names(X)
+    result
 }
 ```
+
+Returning its values:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+vif_mc(bodyfat[1:6])
+```
+
+We can see that we get the same values as with the original VIF function from the *car* library.
+
+\newpage
+
+# Exercise 14
