@@ -208,7 +208,7 @@ We can test for this with our 1000 simulation sample:
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1] 3.000583 3.010034}
+\CommentTok{#> [1] 2.999202 3.001828}
 \end{Highlighting}
 \end{Shaded}
 
@@ -220,8 +220,8 @@ Calculating a relative error for each one of these values:
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}   }
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.00019448281837775"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.00334467298842345"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.000266043077609505"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.000609187194069142"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -244,7 +244,7 @@ value (\(\sigma = 1\)):
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1] 2.969735 3.022792}
+\CommentTok{#> [1] 2.975611 3.015867}
 \end{Highlighting}
 \end{Shaded}
 
@@ -254,8 +254,8 @@ value (\(\sigma = 1\)):
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}}
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.0100883970191926"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.0075973650040555"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.00812972909057604"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.00528905070142072"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -281,7 +281,7 @@ value (\(\sigma = 1\)):
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1]  8.957843 -1.554736}
+\CommentTok{#> [1] 4.0127848 0.1069866}
 \end{Highlighting}
 \end{Shaded}
 
@@ -291,8 +291,8 @@ value (\(\sigma = 1\)):
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}}
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  1.98594766749838"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  1.51824543761867"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.33759492181668"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.964337788957008"}
 \end{Highlighting}
 \end{Shaded}
 
