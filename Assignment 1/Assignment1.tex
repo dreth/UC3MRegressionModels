@@ -208,7 +208,7 @@ We can test for this with our 1000 simulation sample:
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1] 2.999680 2.999683}
+\CommentTok{#> [1] 3.000583 3.010034}
 \end{Highlighting}
 \end{Shaded}
 
@@ -220,8 +220,8 @@ Calculating a relative error for each one of these values:
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}   }
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.000106641573929848"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.000105653745012961"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.00019448281837775"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.00334467298842345"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -244,7 +244,7 @@ value (\(\sigma = 1\)):
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1] 3.024771 2.974909}
+\CommentTok{#> [1] 2.969735 3.022792}
 \end{Highlighting}
 \end{Shaded}
 
@@ -254,8 +254,8 @@ value (\(\sigma = 1\)):
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}}
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.00825712717134482"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.00836374804721126"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.0100883970191926"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.0075973650040555"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -281,7 +281,7 @@ value (\(\sigma = 1\)):
 \begin{Shaded}
 \begin{Highlighting}[]
 \KeywordTok{print}\NormalTok{(means)}
-\CommentTok{#> [1] 2.434081 1.535691}
+\CommentTok{#> [1]  8.957843 -1.554736}
 \end{Highlighting}
 \end{Shaded}
 
@@ -291,8 +291,8 @@ value (\(\sigma = 1\)):
 \ControlFlowTok{for}\NormalTok{ (i }\ControlFlowTok{in} \DecValTok{1}\OperatorTok{:}\KeywordTok{length}\NormalTok{(means)) \{}
     \KeywordTok{print}\NormalTok{(}\KeywordTok{paste}\NormalTok{(}\StringTok{"beta "}\NormalTok{,i, }\StringTok{" hat has a relative error of: "}\NormalTok{, }\KeywordTok{abs}\NormalTok{(means[i]}\OperatorTok{-}\NormalTok{betas[i])}\OperatorTok{/}\NormalTok{betas[i]))}
 \NormalTok{\}}
-\CommentTok{#> [1] "beta  1  hat has a relative error of:  0.188639665472904"}
-\CommentTok{#> [1] "beta  2  hat has a relative error of:  0.488102899588483"}
+\CommentTok{#> [1] "beta  1  hat has a relative error of:  1.98594766749838"}
+\CommentTok{#> [1] "beta  2  hat has a relative error of:  1.51824543761867"}
 \end{Highlighting}
 \end{Shaded}
 
@@ -821,13 +821,32 @@ Then:
 
 \(E[\hat{\beta_{\lambda} }] - \beta = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \beta - \beta \\ = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \beta - (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \beta \\ = (((X^{\prime} X + \lambda I)^{-1} - (X^{\prime} X)^{-1})) X^{\prime} X \beta\)
 
-\hypertarget{proof-that-varhatbeta_ols-leq-varhatbeta_ridge}{%
+\hypertarget{proof-that-varhatbeta_ols-geq-varhatbeta_ridge}{%
 \subsection{\texorpdfstring{Proof that
-\(Var(\hat{\beta_{OLS}}) \leq Var(\hat{\beta_{ridge}})\)}{Proof that Var(\textbackslash{}hat\{\textbackslash{}beta\_\{OLS\}\}) \textbackslash{}leq Var(\textbackslash{}hat\{\textbackslash{}beta\_\{ridge\}\})}}\label{proof-that-varhatbeta_ols-leq-varhatbeta_ridge}}
+\(Var(\hat{\beta_{OLS}}) \geq Var(\hat{\beta_{ridge}})\)}{Proof that Var(\textbackslash{}hat\{\textbackslash{}beta\_\{OLS\}\}) \textbackslash{}geq Var(\textbackslash{}hat\{\textbackslash{}beta\_\{ridge\}\})}}\label{proof-that-varhatbeta_ols-geq-varhatbeta_ridge}}
 
-\(Var(\hat{\beta) = \sigma^{2} (X^{\prime} X)^{-1}\)
+\(Var(\hat{\beta}) = \sigma^{2} (X^{\prime} X)^{-1}\)
 
 \(\hat{\beta_{\lambda}} = (X^{\prime} X + \lambda I)^{-1} X^{\prime} Y \\ = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X (X^{\prime} X + \lambda I)^{-1} X^{\prime} Y \\ = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \hat{\beta}\)
+
+\(Var(\hat{\beta_{\lambda}}) = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X Var(\hat{\beta_{\lambda}}) ((X^{\prime} X + \lambda I)^{-1} X^{\prime} X)^{\prime} \\ = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \sigma^2 (X^{\prime} X)^{-1} X^{\prime} X (X^{\prime} X + \lambda I)^{-1} \\ = \sigma^{2} (X^{\prime} X + \lambda I)^{-1} X^{\prime} X (X^{\prime} X + \lambda I)^{-1}\)
+
+We set \(W = X^{\prime} X (X^{\prime} X + \lambda I)^{-1}\)
+
+\(Var(\hat{\beta_{\lambda}}) = \sigma^2 (X^{\prime} X + \lambda I)^{-1} X^{\prime} X (X^{\prime} X + \lambda I)^{-1} \\ \sigma^{2} W^{\prime} (X^{\prime} X)^{-1} W\)
+
+Difference:
+\(Var(\hat{\beta}) - Var(\hat{\beta_{\lambda}}) = \sigma^{2} (X^{\prime} X)^{-1} - \sigma^{2} W^{\prime} (X^{\prime} X)^{-1} W \\ = \sigma^2 \{ W^{\prime} (W^{\prime})^{-1} (X^{\prime} X)^{-1} W^{\prime} W - W^{\prime} (X^{\prime} X)^{-1} W \} \\ = \sigma^{2} W^{\prime} \{ (W^{\prime})^{-1} (X^{\prime} X)^{-1} W^{-1} - (X^{\prime} X)^{-1} \} W \\ = \sigma^{2} W^{\prime} \{ (X^{\prime} X)^{-1} (X^{\prime} X + \lambda I) (X^{\prime} X)^{-1} (X^{\prime} X + \lambda I) (X^{\prime} X)^{-1} - (X^{\prime} X)^{-1} \} W \\ = \sigma^2 W^{\prime} \{ (I + \lambda (X^{\prime} X)^{-1}) (X^{\prime} X)^{-1} (I + \lambda (X^{\prime} X)^{-1}) - (X^{\prime} X)^{-1} \} W \\ = \sigma^2 W^{\prime} \{ ((X^{\prime} X)^{-1} + \lambda (X^{\prime} X)^{-2}) (I + \lambda (X^{\prime} X)^{-1}) - (X^{\prime} X)^{-1} \} W \\ = \sigma^2 W^{\prime} \{ (X^{\prime} X)^{-1} + \lambda (X^{\prime} X)^{-2} + \lambda (X^{\prime} X)^{-2} + \lambda^2 (X^{\prime} X)^{-3} - (X^{\prime} X)^{-1} \} W \\ = \sigma^2 W^{\prime} \{ 2 \lambda (X^{\prime} X)^{-2} + \lambda^2 (X^{\prime} X)^{-3} \} W \\ = \sigma^2 (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \{ 2 \lambda (X^{\prime} X)^{-2} + \lambda^2 (X^{\prime} X)^{-3} \} X^{\prime} X (X^{\prime} X + \lambda I)^{-1} \\ = \sigma^2 (X^{\prime} X + \lambda I)^{-1} (2 \lambda I + \lambda^2 (X^{\prime} X)^{-1} ) (X^{\prime} X + \lambda I)^{-1}\)
+
+Given that \(\lambda > 0\) then
+\(z = (X^{\prime} X + \lambda I)^{-1} \forall V \neq 0\)
+
+Then we have:
+
+\(V^{\prime} \{ Var(\hat{\beta}) - Var(\hat{\beta_{\lambda}}) \} v \\ = \sigma^2 z^{\prime} \{ 2 \lambda I + \lambda^2 (X^{\prime} X)^{-1} \} z \\ = \sigma^2 \lambda z^{\prime} z + \sigma^2 \lambda^2 z^{\prime} (X^{\prime} X)^{-1} z > 0\)
+
+Because \(X^{\prime} X\) and its inverse \((X^{\prime} X)^{-1}\) are
+positive definite.
 
 \newpage
 

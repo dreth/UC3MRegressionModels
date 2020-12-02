@@ -512,16 +512,44 @@ $E[\hat{\beta_{\lambda} }] - \beta = (X^{\prime} X + \lambda I)^{-1} X^{\prime} 
 = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \beta - (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \beta \\
 = (((X^{\prime} X + \lambda I)^{-1} - (X^{\prime} X)^{-1})) X^{\prime} X \beta$
 
-## Proof that $Var(\hat{\beta_{OLS}}) \leq Var(\hat{\beta_{ridge}})$
 
-$Var(\hat{\beta) = \sigma^{2} (X^{\prime} X)^{-1}$
+## Proof that $Var(\hat{\beta_{OLS}}) \geq Var(\hat{\beta_{ridge}})$
+
+$Var(\hat{\beta}) = \sigma^{2} (X^{\prime} X)^{-1}$
 
 $\hat{\beta_{\lambda}} = (X^{\prime} X + \lambda I)^{-1} X^{\prime} Y \\
 = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X (X^{\prime} X + \lambda I)^{-1} X^{\prime} Y \\
 = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \hat{\beta}$
 
+$Var(\hat{\beta_{\lambda}}) = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X Var(\hat{\beta_{\lambda}}) ((X^{\prime} X + \lambda I)^{-1} X^{\prime} X)^{\prime} \\
+= (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \sigma^2 (X^{\prime} X)^{-1} X^{\prime} X (X^{\prime} X + \lambda I)^{-1} \\
+= \sigma^{2} (X^{\prime} X + \lambda I)^{-1} X^{\prime} X (X^{\prime} X + \lambda I)^{-1}$
 
+We set $W = X^{\prime} X (X^{\prime} X + \lambda I)^{-1}$
 
+$Var(\hat{\beta_{\lambda}}) = \sigma^2 (X^{\prime} X + \lambda I)^{-1} X^{\prime} X (X^{\prime} X + \lambda I)^{-1} \\
+\sigma^{2} W^{\prime} (X^{\prime} X)^{-1} W$
+
+Difference: $Var(\hat{\beta}) - Var(\hat{\beta_{\lambda}}) = \sigma^{2} (X^{\prime} X)^{-1} - \sigma^{2} W^{\prime} (X^{\prime} X)^{-1} W \\
+= \sigma^2 \{ W^{\prime} (W^{\prime})^{-1} (X^{\prime} X)^{-1} W^{\prime} W - W^{\prime} (X^{\prime} X)^{-1} W \} \\
+= \sigma^{2} W^{\prime} \{ (W^{\prime})^{-1} (X^{\prime} X)^{-1} W^{-1} - (X^{\prime} X)^{-1} \} W \\
+= \sigma^{2} W^{\prime} \{ (X^{\prime} X)^{-1} (X^{\prime} X + \lambda I) (X^{\prime} X)^{-1} (X^{\prime} X + \lambda I) (X^{\prime} X)^{-1} - (X^{\prime} X)^{-1} \} W \\
+= \sigma^2 W^{\prime} \{ (I + \lambda (X^{\prime} X)^{-1}) (X^{\prime} X)^{-1} (I + \lambda (X^{\prime} X)^{-1}) - (X^{\prime} X)^{-1} \} W \\
+= \sigma^2 W^{\prime} \{ ((X^{\prime} X)^{-1} + \lambda (X^{\prime} X)^{-2}) (I + \lambda (X^{\prime} X)^{-1}) - (X^{\prime} X)^{-1} \} W \\
+= \sigma^2 W^{\prime} \{ (X^{\prime} X)^{-1} + \lambda (X^{\prime} X)^{-2} + \lambda (X^{\prime} X)^{-2} + \lambda^2 (X^{\prime} X)^{-3} - (X^{\prime} X)^{-1} \} W \\
+= \sigma^2 W^{\prime} \{ 2 \lambda (X^{\prime} X)^{-2} + \lambda^2 (X^{\prime} X)^{-3} \} W \\
+= \sigma^2 (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \{ 2 \lambda (X^{\prime} X)^{-2} + \lambda^2 (X^{\prime} X)^{-3} \} X^{\prime} X (X^{\prime} X + \lambda I)^{-1} \\
+= \sigma^2 (X^{\prime} X + \lambda I)^{-1} (2 \lambda I + \lambda^2 (X^{\prime} X)^{-1} ) (X^{\prime} X + \lambda I)^{-1}$
+
+Given that $\lambda > 0$ then $z = (X^{\prime} X + \lambda I)^{-1} \forall V \neq 0$
+
+Then we have:
+
+$V^{\prime} \{ Var(\hat{\beta}) - Var(\hat{\beta_{\lambda}}) \} v \\
+= \sigma^2 z^{\prime} \{ 2 \lambda I  + \lambda^2 (X^{\prime} X)^{-1} \} z \\
+= \sigma^2 \lambda z^{\prime} z + \sigma^2 \lambda^2 z^{\prime} (X^{\prime} X)^{-1} z > 0$
+
+Because $X^{\prime} X$ and its inverse $(X^{\prime} X)^{-1}$ are positive definite.
 
 \newpage
 
