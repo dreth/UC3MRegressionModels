@@ -1,7 +1,7 @@
 ---
 title: 'Regression Models: Assignment 1'
 author: "Daniel Alonso"
-date: "November 24th, 2020"
+date: "December 2nd, 2020"
 output: 'pdf_document'
 ---
 
@@ -496,6 +496,30 @@ Here we see the situation has improved significantly and we now have constant va
 \newpage
 
 # Exercise 12
+
+## Bias $\hat{\beta}$ of the ridge regression estimator:
+
+$\hat{\beta_{\lambda}} = (X^{\prime} X + \lambda I)^{-1} X^{\prime} Y \\
+= (X^{\prime} X + \lambda I)^{-1} X^{\prime} (X \beta + \epsilon) \\
+= (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \beta + (X^{\prime} X + \lambda I)^{-1} X^{\prime} \epsilon$
+
+$E(\hat{\beta_{\lambda}}) = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \beta + (X^{\prime} X + \lambda I)^{-1} X^{\prime} E[\epsilon | X] \\
+= (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \beta$
+
+Then:
+
+$E[\hat{\beta_{\lambda} }] - \beta = (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \beta - \beta \\
+= (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \beta - (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \beta \\
+= (((X^{\prime} X + \lambda I)^{-1} - (X^{\prime} X)^{-1})) X^{\prime} X \beta$
+
+## Proof that $Var(\hat{\beta_{OLS}}) \leq Var(\hat{\beta_{ridge}})$
+
+$Var(\hat{\beta) = \sigma^{2} (X^{\prime} X)^{-1}$
+
+$\hat{\beta_{\lambda}} = (X^{\prime} X + \lambda I)^{-1} X^{\prime} Y \\
+= (X^{\prime} X + \lambda I)^{-1} X^{\prime} X (X^{\prime} X + \lambda I)^{-1} X^{\prime} Y \\
+= (X^{\prime} X + \lambda I)^{-1} X^{\prime} X \hat{\beta}$
+
 
 
 
