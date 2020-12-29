@@ -1,0 +1,41 @@
+---
+title: 'Regression Models: Assignment 2'
+author: "Daniel Alonso"
+date: "January 11th, 2020"
+output: 'pdf_document'
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+collapse = TRUE,
+comment = '#>',
+fig.path = './figures/'
+)
+```
+
+## Installing libraries used
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide", eval=FALSE}
+packages = c("dplyr","MuMIn","MASS","leaps","glmnet","car")
+for (package in packages) {
+    install.packages(package)
+}
+```
+
+## Importing libraries
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide"}
+library(dplyr)
+library(MuMIn)
+library(MASS)
+library(leaps)
+library(glmnet)
+library(car)
+```
+
+\newpage
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+insurance <- read.csv('../data/')
+```
