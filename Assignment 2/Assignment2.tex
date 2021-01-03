@@ -139,4 +139,79 @@
 
 \newpage
 
+\hypertarget{exercise-1}{%
+\subsection{Exercise 1}\label{exercise-1}}
+
+\hypertarget{model-and-parameter-interpretation}{%
+\subsubsection{1 - Model and parameter
+interpretation}\label{model-and-parameter-interpretation}}
+
+\emph{Y} = Binary variable representing whether the customer will buy a
+car or not \emph{income} = annual family income
+
+Therefore we model the response as:
+
+\(Y = \beta_{0} + \beta_{1} X + \epsilon\)
+
+And our values will be:
+
+\(Y = -1.98079 + 0.04342 X + \epsilon\)
+
+The higher the family income, the higher the likeliness that a family
+will purchase a new car.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{y =}\StringTok{ }\ControlFlowTok{function}\NormalTok{(x) (}\OperatorTok{-}\FloatTok{1.98079} \OperatorTok{+}\StringTok{ }\FloatTok{0.04342} \OperatorTok{*}\StringTok{ }\NormalTok{x)}
+\NormalTok{p =}\StringTok{ }\ControlFlowTok{function}\NormalTok{(y) (}\KeywordTok{exp}\NormalTok{(y)}\OperatorTok{/}\NormalTok{(}\KeywordTok{exp}\NormalTok{(y)}\OperatorTok{+}\DecValTok{1}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{ci-for-the-probability-that-a-family-with-annual-income-of-60-thousand-dollars-will-purchase-anew-car-next-year.}{%
+\subsubsection{2 - 95\%-CI for the probability that a family with annual
+income of 60 thousand dollars will purchase anew car next
+year.}\label{ci-for-the-probability-that-a-family-with-annual-income-of-60-thousand-dollars-will-purchase-anew-car-next-year.}}
+
+We calculate the asymptotic \((1 - \alpha)\%\) confidence interval:
+
+\(\hat{\beta_{j}} \pm z_{\frac{\alpha}{2}} S.E. (\hat{\beta_{j}})\)
+
+With our values we get:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{# CI calculation}
+\NormalTok{l_bound <-}\StringTok{ }\FloatTok{0.04342} \OperatorTok{-}\StringTok{ }\KeywordTok{qnorm}\NormalTok{(}\FloatTok{0.975}\NormalTok{) }\OperatorTok{*}\StringTok{ }\FloatTok{0.02011}
+\NormalTok{u_bound <-}\StringTok{ }\FloatTok{0.04342} \OperatorTok{+}\StringTok{ }\KeywordTok{qnorm}\NormalTok{(}\FloatTok{0.975}\NormalTok{) }\OperatorTok{*}\StringTok{ }\FloatTok{0.02011}
+\end{Highlighting}
+\end{Shaded}
+
+\(0.004005124 \leq \hat{\beta_{j}} \leq 0.08283488\)
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{p}\NormalTok{(l_bound)}
+\CommentTok{#> [1] 0.5010013}
+\KeywordTok{p}\NormalTok{(u_bound)}
+\CommentTok{#> [1] 0.5206969}
+\end{Highlighting}
+\end{Shaded}
+
+\(0.5010013 \leq p \leq 0.5206969\)
+
+Therefore for 60 thousand dollar annual income households:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{L <-}\StringTok{ }\FloatTok{-1.98079} \OperatorTok{+}\StringTok{ }\FloatTok{0.004005124} \OperatorTok{*}\StringTok{ }\DecValTok{60}
+\NormalTok{U <-}\StringTok{ }\FloatTok{-1.98079} \OperatorTok{+}\StringTok{ }\FloatTok{0.08283488} \OperatorTok{*}\StringTok{ }\DecValTok{60}
+\KeywordTok{p}\NormalTok{(L)}
+\CommentTok{#> [1] 0.1492517}
+\KeywordTok{p}\NormalTok{(U)}
+\CommentTok{#> [1] 0.9520885}
+\end{Highlighting}
+\end{Shaded}
+
+\(0.1492517 \leq p_{60k} \leq 0.9520885\)
+
 \end{document}

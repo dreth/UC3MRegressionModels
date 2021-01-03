@@ -36,6 +36,58 @@ library(car)
 
 \newpage
 
+## Exercise 1
+
+### 1 - Model and parameter interpretation
+
+*Y* = Binary variable representing whether the customer will buy a car or not
+*income* = annual family income
+
+Therefore we model the response as:
+
+$Y = \beta_{0} + \beta_{1} X + \epsilon$
+
+And our values will be:
+
+$Y = -1.98079 + 0.04342 X + \epsilon$
+
+The higher the family income, the higher the likeliness that a family will purchase a new car.
+
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-insurance <- read.csv('../data/')
+y = function(x) (-1.98079 + 0.04342 * x)
+p = function(y) (exp(y)/(exp(y)+1))
 ```
+
+### 2 - 95%-CI for the probability that a family with annual income of 60 thousand dollars will purchase anew car next year.
+
+We calculate the asymptotic $(1 - \alpha)\%$ confidence interval:
+
+$\hat{\beta_{j}} \pm z_{\frac{\alpha}{2}} S.E. (\hat{\beta_{j}})$
+
+With our values we get:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+# CI calculation
+l_bound <- 0.04342 - qnorm(0.975) * 0.02011
+u_bound <- 0.04342 + qnorm(0.975) * 0.02011
+```
+
+$0.004005124 \leq \hat{\beta_{j}} \leq 0.08283488$
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+p(l_bound)
+p(u_bound)
+```
+
+$0.5010013 \leq p \leq 0.5206969$
+
+Therefore for 60 thousand dollar annual income households:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+L <- -1.98079 + 0.004005124 * 60
+U <- -1.98079 + 0.08283488 * 60
+p(L)
+p(U)
+```
+
+$0.1492517 \leq p_{60k} \leq 0.9520885$
