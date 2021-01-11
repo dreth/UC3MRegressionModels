@@ -17,7 +17,8 @@ fig.path = './figures/'
 ## Installing libraries used
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide", eval=FALSE}
-packages = c("dplyr","MuMIn","MASS","leaps","glmnet","car")
+packages = c("dplyr","MuMIn","MASS","leaps","glmnet","car","stringr","ResourceSelection"
+             "boot","statmod","Epi", "Metrics", "caret")
 for (package in packages) {
     install.packages(package)
 }
@@ -32,6 +33,13 @@ library(MASS)
 library(leaps)
 library(glmnet)
 library(car)
+library(stringr)
+library(ResourceSelection)
+library(boot)
+library(statmod)
+library(Epi)
+library(Metrics)
+library(caret)
 ```
 
 \newpage
@@ -45,20 +53,21 @@ library(car)
 
 Therefore we model the response as:
 
-$Y = \beta_{0} + \beta_{1} X + \epsilon$
+$\eta = \beta_{0} + \beta_{1} X + \epsilon$
 
 And our values will be:
 
-$Y = -1.98079 + 0.04342 X + \epsilon$
+$\eta = -1.98079 + 0.04342 X + \epsilon$
 
-The higher the family income, the higher the likeliness that a family will purchase a new car.
+
+The odds increase by $e^{\beta_{1}} = 1.044376$ if the predictor is increased by one unit.
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-y = function(x) (-1.98079 + 0.04342 * x)
-p = function(y) (exp(y)/(exp(y)+1))
+eta = function(x) (-1.98079 + 0.04342 * x)
+p = function(eta) (exp(eta)/(exp(eta)+1))
 ```
 
-### 2 - 95%-CI for the probability that a family with annual income of 60 thousand dollars will purchase anew car next year.
+### 2 - 95%-CI for the probability that a family with annual income of 60 thousand dollars will purchase a new car next year.
 
 We calculate the asymptotic $(1 - \alpha)\%$ confidence interval:
 
@@ -91,3 +100,233 @@ p(U)
 ```
 
 $0.1492517 \leq p_{60k} \leq 0.9520885$
+
+## Exercise 2
+
+### Importing and manipulating the dataset
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+cols <- c("age","lwt","race","smoke")
+birthwt <- MASS::birthwt %>% dplyr::select(c("low",cols))
+```
+
+For race we should use a dummy variable per race:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+birthwt$white <- ifelse(birthwt$race == 1, 1, 0)
+birthwt$black <- ifelse(birthwt$race == 2, 1, 0)
+birthwt$other <- ifelse(birthwt$race == 3, 1, 0)
+cols <- c("age", "lwt", "smoke", "white", "black", "other")
+birthwt <- birthwt %>% dplyr::select(c("low",cols))
+```
+
+
+### Model fitting and selection
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+FM <- glm(low ~ ., data=birthwt, family=binomial)
+staic <- stepAIC(FM, list(upper=~age*lwt*smoke*white*black*other, lower= ~1))
+```
+
+Using stepAIC we can see all the combinations classified by AIC. The model with the lowest AIC is the model that uses *lwt*, *smoke* and *white* and drops the *age*, *black* and *other* variables.
+
+We can see the interactions between the variable selected and age are not particularly significant and don't seem to affect the model enough to consider them, in fact, the AIC is improved when these are not present.
+
+We can see that in general, dropping the *age* variable yields a better result:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+staic$anova
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results='hide'}
+MuMIn::dredge(FM)
+```
+
+Using dredge also tells us the same as stepAIC, where the best model is the one at the top (as they are ranked by AIC already).
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+anova(FM, staic, test="Chisq")$"Pr(>Chi)"[2]
+```
+
+Performing a likelihood ratio test yields a good, high p-val of 0.668 so we pick the reduced model.
+
+### Hosmer-Lemeshow test
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+hoslem.test(birthwt$low, predict(staic, type="response"))
+```
+
+We have a large p-value of 0.335 which indicates that our goodness of fit is most likely okay.
+
+\newpage
+
+### Residual plots and model assumptions
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+glm.diag.plots(staic)
+```
+
+As we have 2 sets of points for the Residuals vs Linear predictor and the Quantiles of standard normal vs Ordered deviance residuals, we can't properly interpret these.
+
+For the cook's distance we can see there is a few slightly high leverage points . However, it is not significant as other than this there's no points present in the top right quadrant of the plot. 
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, fig.width=10, fig.height=7}
+par(mfrow=c(2,1))
+plot(birthwt$lwt, qres.binom(staic), xlab="lwt", ylab="Quantile residuals")
+qqnorm(qres.binom(staic))
+```
+
+We decide not to plot the *race* or *smoke* variables given that, even though they're in the model, they're categorical variables.
+
+For our *lwt* residual plot, everything seems to be okay, we see that. In the normal QQ plot we see that the values decently fit a normal distribution. This fits the normality assumption.
+
+Our only continuous variable in the model (*lwt*) seems to have constant variance, therefore our model is homocedastic.
+
+### Total error rate of the model
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+Epi::ROC(form=low~lwt+white+smoke , data=birthwt, plot="ROC", lw=3, cex=1.5)
+```
+
+The model has an AUC = 0.684 which corresponds to a decent but not particularly good model, however, using this measure we can assert that the model does have predictive capability.
+
+We can see our cutoff point is also 0.253.
+
+Our model has a very high sensitivity, however, a very low specificity, therefore it also has a very high false negative rate. We could comfortably assert that this is the achilles heel of our model, as it still has a high accuracy for positives but a very low accuracy for negatives.
+
+It would also be appropriate to look at the MAE and MSE for our model.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+Metrics::mae(birthwt$low, predict(staic, type="response"))
+Metrics::mse(birthwt$low, predict(staic, type="response"))
+```
+
+We can see that they're both relatively low even though our model doesn't perform amazingly.
+
+### Mothers having babies with low birth weight vs normal birth weight
+
+First we will look at variable importance:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+caret::varImp(staic)
+```
+
+We can see that the most important variable of the model is the *smoke* variable, followed by *white* and then *lwt*.
+
+We select a subset of the original dataset which uses the model prediction and we also select a subset of the original dataset using the real classification. Both for normal birth weight babies and low birth weight babies, in order to assess which elements are characteristic of each group.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+# model's prediction
+pred <- predict(staic, type="response")
+normal_birth_weight <- birthwt[pred<0.253,]
+low_birth_weight <- birthwt[pred>0.253,]
+
+# reality
+real_lbw <- birthwt %>% dplyr::filter(low == 1)
+real_nbw <- birthwt %>% dplyr::filter(low == 0)
+```
+
+#### Smoke prevalence
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+table(normal_birth_weight$smoke)
+```
+
+We can see that as the model considers the variable smoke particularly important for prediction, it seems to very strongly influence its prediction of normal birth weight, therefore very effectively predicting those with normal birth weight. And as we clearly know, smoking is a high risk factor for birth issues like this. However, we can also notice that non-smokers tend to give birth to normal weight babies.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+table(low_birth_weight$smoke)
+```
+
+However, when comparing its prediction of low birth weight it falls short, as not all low birth weight babies come from a mother that smokes. The model fails about 60% of the time.
+
+In contrast to the reality:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+table(real_lbw$smoke)
+```
+
+For low weight babies there's about a 50% chance that the mother is a smoker
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+table(real_nbw$smoke)
+```
+
+While it is significantly more probable that the mother is not a smoker when the baby has a normal birth weight. We see that the amount of non-smoker mothers represent about 66% of the normal birth weight subset.
+
+#### Age
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+print(stringr::str_interp('low birth weight: ${mean(low_birth_weight$age)}'))
+print(stringr::str_interp('normal birth weight: ${mean(normal_birth_weight$age)}'))
+```
+
+We can see that according to the model, the median age of mothers giving birth to normal weight babies is ~25.15 years old, while the ones with low birth weight babies are ~22.35 years old.
+
+In contrast to the reality though:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+print(stringr::str_interp('low birth weight: ${mean(real_lbw$age)}'))
+print(stringr::str_interp('normal birth weight: ${mean(real_nbw$age)}'))
+```
+
+There doesn't seem to be a significant age difference (~1 year).
+
+#### Mother's weight
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+print(stringr::str_interp('low birth weight: ${mean(low_birth_weight$lwt)}'))
+print(stringr::str_interp('normal birth weight: ${mean(normal_birth_weight$lwt)}'))
+```
+
+The mother's weight shows significant difference for the prediction, where normal birth weight mom's weight (on average) about 34 pounds more.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+print(stringr::str_interp('low birth weight: ${mean(real_lbw$lwt)}'))
+print(stringr::str_interp('normal birth weight: ${mean(real_nbw$lwt)}'))
+```
+
+However, in reality, the difference is ~11 pounds on average for our dataset.
+
+#### Mother's race (binary if white)
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+table(low_birth_weight$white)
+```
+
+The model is significantly biased towards the white race group where most low birth weight babies come from non-white mothers (about 2x more likely).
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+table(normal_birth_weight$white)
+```
+
+We also see that race group 1 has the highest representation among those mothers with normal birth weight babies.
+
+In contrast to the reality:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+table(real_lbw$race)
+```
+
+We can see that in the real dataset, race doesn't quite seem to play the role that the model portrays it to have in whether a baby has low birth weight or not.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+table(real_lbw$race)
+table(real_nbw$race)
+```
+
+There's a clear overrepresentation of race group 1 in the normal birth weight subset.
+
+#### What characteristic had the highest impact?
+
+Following the model's result, we can definitely say that whether the mother was a smoker or not had the highest influence in its prediction, followed by the race, where there was a huge overrepresentation of group 3 in the low birth weight group.
+
+## Exercise 3
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+health <- read.table('../data/health.txt', header=TRUE)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+model <- glm(g02 ~ sex+weight, data=health, family=binomial)
+```
