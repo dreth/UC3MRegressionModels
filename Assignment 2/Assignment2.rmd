@@ -18,7 +18,7 @@ fig.path = './figures/'
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide", eval=FALSE}
 packages = c("dplyr","MuMIn","MASS","leaps","glmnet","car","stringr","ResourceSelection"
-             "boot","statmod","Epi", "Metrics", "caret")
+             "boot","statmod","Epi", "Metrics", "caret", "ggplot2")
 for (package in packages) {
     install.packages(package)
 }
@@ -40,6 +40,7 @@ library(statmod)
 library(Epi)
 library(Metrics)
 library(caret)
+library(ggplot2)
 ```
 
 \newpage
@@ -325,8 +326,29 @@ Following the model's result, we can definitely say that whether the mother was 
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 health <- read.table('../data/health.txt', header=TRUE)
+cols <- c("g02","sex","weight")
+health <- health %>% dplyr::select(g02,sex,weight)
 ```
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
+fm <- glm(g02 ~ sex+weight+sex:weight, data=health, family=binomial)
 model <- glm(g02 ~ sex+weight, data=health, family=binomial)
+anova(fm, model, test="Chisq")
 ```
+
+The interaction between sex and weight is significant, therefore we will include it in the model.
+
+### Interpreting the coefficients in terms of the OR
+
+$log(\frac{p}{1-p}) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \dots + \beta_k x_k$ 
+
+$O_R = 1.324690 + e^{1.236831}sex + e^{0.017271}weight + e^{-0.028984}sex:weight$
+
+### Plotting predicted probabilities for males and females
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+health$pred_prob <- predict(model, type='response')
+Sex <- ifelse(health$sex == 1, "male", "female")
+ggplot(data=health, aes(color=Sex)) + geom_point(aes(x=weight, y=pred_prob))
+```
+
