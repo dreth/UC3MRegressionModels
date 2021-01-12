@@ -18,7 +18,7 @@ fig.path = './figures/'
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide", eval=FALSE}
 packages = c("dplyr","MuMIn","MASS","leaps","glmnet","car","stringr","ResourceSelection"
-             "boot","statmod","Epi", "Metrics", "caret", "ggplot2")
+             "boot","statmod","Epi", "Metrics", "caret", "ggplot2", "multcomp", "combinat")
 for (package in packages) {
     install.packages(package)
 }
@@ -41,13 +41,15 @@ library(Epi)
 library(Metrics)
 library(caret)
 library(ggplot2)
+library(multcomp)
+library(combinat)
 ```
 
 \newpage
 
 ## Exercise 1
 
-### 1 - Model and parameter interpretation
+### Model and parameter interpretation
 
 *Y* = Binary variable representing whether the customer will buy a car or not
 *income* = annual family income
@@ -58,17 +60,17 @@ $\eta = \beta_{0} + \beta_{1} X + \epsilon$
 
 And our values will be:
 
-$\eta = -1.98079 + 0.04342 X + \epsilon$
+$\eta = e^{-1.98079} + X e^{0.04342} + \epsilon$
 
+Where $X$ is the annual family income.
 
 The odds increase by $e^{\beta_{1}} = 1.044376$ if the predictor is increased by one unit.
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-eta = function(x) (-1.98079 + 0.04342 * x)
-p = function(eta) (exp(eta)/(exp(eta)+1))
+
 ```
 
-### 2 - 95%-CI for the probability that a family with annual income of 60 thousand dollars will purchase a new car next year.
+### 95%-CI for the probability that a family with annual income of 60 thousand dollars will purchase a new car next year.
 
 We calculate the asymptotic $(1 - \alpha)\%$ confidence interval:
 
@@ -77,30 +79,25 @@ $\hat{\beta_{j}} \pm z_{\frac{\alpha}{2}} S.E. (\hat{\beta_{j}})$
 With our values we get:
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
+# defining a p function for prob
+p = function(eta) (exp(eta)/(exp(eta)+1))
+
+# CI-Z
+z_95 <- qnorm(0.975)
+
 # CI calculation
-l_bound <- 0.04342 - qnorm(0.975) * 0.02011
-u_bound <- 0.04342 + qnorm(0.975) * 0.02011
+p(-1.98079 + z_95*0.85720 + 0.04342*60 + z_95*0.02011)
+p(-1.98079 - z_95*0.85720 + 0.04342*60 - z_95*0.02011)
 ```
 
-$0.004005124 \leq \hat{\beta_{j}} \leq 0.08283488$
+$0.2506618 \leq p_{60k} \leq 0.9124486$
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-p(l_bound)
-p(u_bound)
-```
 
-$0.5010013 \leq p \leq 0.5206969$
+### Grouping into 6 levels of income, what test is used and what are the DF of the test statistic
 
-Therefore for 60 thousand dollar annual income households:
+The appropriate test for this would be the Hosmer-Lemeshow test with $G=6$ (corresponding to 6 groups).
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-L <- -1.98079 + 0.004005124 * 60
-U <- -1.98079 + 0.08283488 * 60
-p(L)
-p(U)
-```
-
-$0.1492517 \leq p_{60k} \leq 0.9520885$
+The DF of the test statistic for a Hosmer-Lemeshow test is $DF=G-2$, therefore, $DF = 4$
 
 ## Exercise 2
 
@@ -140,6 +137,7 @@ staic$anova
 ```
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, results='hide'}
+options(na.action=na.fail)
 MuMIn::dredge(FM)
 ```
 
@@ -171,6 +169,8 @@ As we have 2 sets of points for the Residuals vs Linear predictor and the Quanti
 
 For the cook's distance we can see there is a few slightly high leverage points . However, it is not significant as other than this there's no points present in the top right quadrant of the plot. 
 
+\newpage
+
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, fig.width=10, fig.height=7}
 par(mfrow=c(2,1))
 plot(birthwt$lwt, qres.binom(staic), xlab="lwt", ylab="Quantile residuals")
@@ -182,6 +182,8 @@ We decide not to plot the *race* or *smoke* variables given that, even though th
 For our *lwt* residual plot, everything seems to be okay, we see that. In the normal QQ plot we see that the values decently fit a normal distribution. This fits the normality assumption.
 
 Our only continuous variable in the model (*lwt*) seems to have constant variance, therefore our model is homocedastic.
+
+\newpage
 
 ### Total error rate of the model
 
@@ -255,6 +257,8 @@ table(real_nbw$smoke)
 
 While it is significantly more probable that the mother is not a smoker when the baby has a normal birth weight. We see that the amount of non-smoker mothers represent about 66% of the normal birth weight subset.
 
+\newpage
+
 #### Age
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
@@ -306,14 +310,14 @@ We also see that race group 1 has the highest representation among those mothers
 In contrast to the reality:
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-table(real_lbw$race)
+table(real_lbw$white)
 ```
 
 We can see that in the real dataset, race doesn't quite seem to play the role that the model portrays it to have in whether a baby has low birth weight or not.
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-table(real_lbw$race)
-table(real_nbw$race)
+table(real_lbw$white)
+table(real_nbw$white)
 ```
 
 There's a clear overrepresentation of race group 1 in the normal birth weight subset.
@@ -331,6 +335,19 @@ health <- health %>% dplyr::select(g02,sex,weight)
 ```
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
+mean(health[health$sex==1,]$weight)
+mean(health[health$sex==2,]$weight)
+```
+
+We will make the assumption that for the *sex* column *1 = males* and *2 = females*, as average weight for males is (generally) higher for pretty much every country.
+
+We will subtract 1 from the *sex* column to make it a binary variable with only 1s and 0s.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+health$sex <- health$sex - 1
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
 fm <- glm(g02 ~ sex+weight+sex:weight, data=health, family=binomial)
 model <- glm(g02 ~ sex+weight, data=health, family=binomial)
 anova(fm, model, test="Chisq")
@@ -338,17 +355,223 @@ anova(fm, model, test="Chisq")
 
 The interaction between sex and weight is significant, therefore we will include it in the model.
 
+\newpage
+
 ### Interpreting the coefficients in terms of the OR
 
-$log(\frac{p}{1-p}) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \dots + \beta_k x_k$ 
+$\eta = log(\frac{p}{1-p})$
 
-$O_R = 1.324690 + e^{1.236831}sex + e^{0.017271}weight + e^{-0.028984}sex:weight$
+$\eta = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \dots + \beta_k x_k$ 
+
+In terms of the odds:
+
+$Odds = e^{2.56152 + 1.236831 X_1 - 0.01171 X_2 - 0.028984 X_1 X_2}$
+
+Where $X_1$ represents *sex*, $X_2$ represents *weight* and $X_1 X_2$ represents *sex:weight*.
+
+For the odds ratio, we should highlight the differences between males and females.
+
+Therefore:
+
+$O_R = \frac{e^{2.56152 - 0.01171 X_2}}{e^{2.56152 + 1.236831 X_1 - 0.01171 X_2 - 0.028984 X_1 X_2}}$
+
+Where the numerator of the fraction corresponds to the odds for **males** and the denominator corresponds to the odds for **females**.
 
 ### Plotting predicted probabilities for males and females
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-health$pred_prob <- predict(model, type='response')
-Sex <- ifelse(health$sex == 1, "male", "female")
+health$pred_prob <- predict(fm, type='response')
+Sex <- ifelse(health$sex == 1, "female", "male")
 ggplot(data=health, aes(color=Sex)) + geom_point(aes(x=weight, y=pred_prob))
 ```
+
+We can see a trend here, men are significantly more likely to consider themselves healthy. The model is also telling us that weight negatively affects the probability to feel healthy in a significant way, however, much more significantly on females than males. 
+
+Both men and women seem to consider weight an important factor in their health perception. The lower usually tends to mean the better, however, it's clear that being underweight isn't a healthy trait, but some people might think otherwise.
+
+\newpage
+
+### Relative risk and odds ratio of self-perceived good health per sex for a 75kg person
+
+We predict for both males and females by specifying the *sex=0* (for males) and *sex=1* (for females) and *weight=75* for both sexes.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+males <- predict(fm, newdata=data.frame(sex=0,weight=75), type="response")
+females <- predict(fm, newdata=data.frame(sex=1,weight=75), type="response")
+```
+
+We calculate the relative risk:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+females/males
+```
+
+And the odds Ratio:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+(females/(1-females))/(males/(1-males))
+```
+
+We can say that females are *0.3918128* times less likely to have self-perceived good health than males.
+
+### Estimated expected probability of self-perceived good health of females of 70kg and 110kg with CI
+
+#### Females of 70kg
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+predict(fm, newdata=data.frame(sex=1,weight=70), type="response")
+```
+
+The expected probability of self-perceived good health for 70kg females is of ~0.721.
+
+#### Females of 110kg
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+predict(fm, newdata=data.frame(sex=1,weight=110), type="response")
+```
+
+The expected probability of self-perceived good health for 110kg females is of ~0.336.
+
+#### 95%-CI for the prob. of self-perceived good health for a 70kg female
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+w1 <- predict(fm, newdata=data.frame(sex=1,weight=70), type="link", se.fit=TRUE)
+
+p(w1$fit - qnorm(0.975)*w1$se.fit)
+p(w1$fit + qnorm(0.975)*w1$se.fit)
+```
+
+The confidence interval for the probability of self-perceived good health for a 70kg female is:
+
+$0.7015783 \leq \beta_{70kg} \leq 0.7396794$
+
+\newpage
+
+#### 95%-CI for the prob. of self-perceived good health for a 110kg female
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+w2 <- predict(fm, newdata=data.frame(sex=1,weight=110), type="link", se.fit=TRUE)
+
+p(w2$fit - qnorm(0.975)*w2$se.fit)
+p(w2$fit + qnorm(0.975)*w2$se.fit)
+```
+
+ 
+The confidence interval for the probability of self-perceived good health for a 70kg female is:
+
+$0.2609291 \leq \beta_{110kg} \leq 0.4217766$
+
+## Exercise 4
+
+Importing and manipulating the data:
+
+We exclude  *g01* as it seems to interfere with the predictions (probably because the target variable *g02* seems to be based on *g01*). 
+
+Also, during testing, year didnt seem to influence the model very much.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+health <- read.table('../data/health.txt', header=TRUE)
+cols <- names(health)[names(health) != "g01"]
+health <- health %>% dplyr::select(cols)
+
+# taking one from sex to have it as 0, 1
+health$sex <- health$sex - 1
+```
+
+We create a model which includes all the variables and their interactions:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+fm <- glm(g02~sex*weight*height*con_tab*educa*drink*age*year*imc, data=health, family=binomial)
+```
+
+The approach of this algorithm is at follows:
+
+1 - We create a vector with the column names excluding g02
+
+2- 
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+# exclude target
+cols <- names(health)[names(health) != "g02"]
+vars <- list()
+best_models <- list()
+everything <- list()
+for (i in 2:7) {
+    best_models[[i]] <- combinat::combn(cols,i)
+    aics_l <- c()
+    bics_l <- c()
+    lrts_l <- c()
+    for (k in 1:(length(best_models[[i]])/i)) {
+        mods <- paste(best_models[[i]][,k],collapse="+")
+        curr_model <- stringr::str_interp('g02~(${mods})^2')
+        md <- glm(curr_model, data=health, family=binomial)
+        aic_optimized <- stepAIC(md)
+        aics_l <- c(aics_l, AIC(aic_optimized))
+        bics_l <- c(bics_l, BIC(aic_optimized))
+        test <- anova(fm, aic_optimized, test="Chisq")
+        lrts_l <- c(lrts_l, test$"Pr(>Chi)"[2])
+    }
+    mod <- 1:length(best_models[[i]])
+    everything[[i]] <- data.frame(mod=mod,aics=aics_l,bics=bics_l,lrts=lrts_l)
+}
+```
+
+We use stepAIC to obtain the best model based on AIC and stepAIC with the parameter $k=log(n)$ to obtain the best model based on BIC.
+
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results='hide'}
+# using stepAIC
+staic <- stepAIC(mod)
+```
+
+After 
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+# using stepBIC
+n = dim(health)[1]
+stepAIC(mod, k=log(n))
+```
+
+## Exercise 5
+
+Importing and manipulating the data:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+crime <- read.table('../data/Campus_Crime.txt', header=TRUE)
+crime$Type <- as.factor(crime$Type)
+crime$Region <- as.factor(crime$Region)
+```
+
+We first create both a model (using the variables *Region* and *Type*) with and without the interactions:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+fm <- glm(Property~Region+Type+Region:Type, data=crime, family=poisson, offset=log(Enrollment))
+model <- glm(Property~Region+Type, data=crime, family=poisson, offset=log(Enrollment))
+```
+
+We test for the significance of the interactions between the different variables:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+anova(fm, model, test="Chisq")
+```
+
+Given their p-val in the LRT, we can assert that the interactions are significant and we cannot drop them, basically, incidence of property crime has a significant relationship to whether it occurs in C (College) or U (University).
+
+Our reference region is a College in the Central region, corresponding to the following model:
+
+$\lambda_0 = e^{-4.9006}$
+
+In contrast, this is how the model would look like if we select a University in the southwest region:
+
+$\lambda_1 = \frac{e^{0.3155}}{e^{0.1854} e^{0.6978} e^{4.9006}}$
+
+However, we still have to optimize the model, to achieve this, we will use *stepAIC* in order to find the model with the best AIC. 
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+stepAIC(model, list(upper=~Region*Type, lower= ~1))
+```
+
+We see that according to stepAIC, the best model is the one that includes all the interactions between the variables. Returning a model with an AIC of 4300.
+
+## Exercise 6
 
