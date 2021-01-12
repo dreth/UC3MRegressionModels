@@ -490,7 +490,7 @@ The approach of this algorithm is at follows:
 
 2- 
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
 # exclude target
 cols <- names(health)[names(health) != "g02"]
 vars <- list()
