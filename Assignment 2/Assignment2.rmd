@@ -514,11 +514,13 @@ Each column of *best_models* corresponds with a list of variables used in each m
 
 8 - We save both the variable lists used in each model and the results for all the tested models in a CSV document. There will be 1 CSV document per amount of variables (1 for 2-var models, 1 for 3-var models, etc.)
 
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+# exclude target
+cols <- names(health)[names(health) != "g02"]
+```
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
 # This takes really long to run!
-# exclude target
-cols <- names(health)[names(health) != "g02"]
 best_models <- list()
 everything <- list()
 for (i in 2:length(cols)) {
