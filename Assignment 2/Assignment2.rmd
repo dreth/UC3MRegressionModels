@@ -496,7 +496,7 @@ cols <- names(health)[names(health) != "g02"]
 vars <- list()
 best_models <- list()
 everything <- list()
-for (i in 2:7) {
+for (i in 8:9) {
     best_models[[i]] <- combinat::combn(cols,i)
     aics_l <- c()
     bics_l <- c()
@@ -514,23 +514,19 @@ for (i in 2:7) {
     mod <- 1:length(best_models[[i]])
     everything[[i]] <- data.frame(mod=mod,aics=aics_l,bics=bics_l,lrts=lrts_l)
 }
+
+# saving the results of this
+for (i in 8:9) {
+    write.csv(best_models[[i]],str_interp("./models_dump/${i}_model_vars.csv"))
+    write.csv(everything[[i]],str_interp("./models_dump/${i}_var_models.csv"))
+}
 ```
+
+
 
 We use stepAIC to obtain the best model based on AIC and stepAIC with the parameter $k=log(n)$ to obtain the best model based on BIC.
 
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE, results='hide'}
-# using stepAIC
-staic <- stepAIC(mod)
-```
-
-After 
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-# using stepBIC
-n = dim(health)[1]
-stepAIC(mod, k=log(n))
-```
 
 ## Exercise 5
 
