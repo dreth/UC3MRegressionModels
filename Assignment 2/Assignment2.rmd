@@ -1,7 +1,7 @@
 ---
 title: 'Regression Models: Assignment 2'
 author: "Daniel Alonso"
-date: "January 11th, 2020"
+date: "January 13th, 2020"
 output: 'pdf_document'
 ---
 
@@ -16,8 +16,11 @@ fig.path = './figures/'
 ## Installing libraries used
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, results="hide", eval=FALSE}
-packages = c("dplyr","MuMIn","MASS","leaps","glmnet","car","stringr","ResourceSelection"
-             "boot","statmod","Epi", "Metrics", "caret", "ggplot2", "multcomp", "combinat")
+packages = c("dplyr","MuMIn","MASS","leaps","glmnet",
+             "car","stringr","ResourceSelection",
+             "boot","statmod","Epi", "Metrics",
+             "caret", "ggplot2", "multcomp",
+             "combinat", "pscl", "lmtest")
 for (package in packages) {
     install.packages(package)
 }
@@ -42,6 +45,8 @@ library(caret)
 library(ggplot2)
 library(multcomp)
 library(combinat)
+library(pscl)
+library(lmtest)
 ```
 
 \newpage
@@ -59,7 +64,7 @@ $\eta = \beta_{0} + \beta_{1} X + \epsilon$
 
 And our values will be:
 
-$\eta = e^{-1.98079} + X e^{0.04342} + \epsilon$
+$\eta = e^{-1.98079 + X 0.04342 + \epsilon}$
 
 Where $X$ is the annual family income.
 
@@ -511,6 +516,7 @@ Each column of *best_models* corresponds with a list of variables used in each m
 
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+# This takes really long to run!
 # exclude target
 cols <- names(health)[names(health) != "g02"]
 best_models <- list()
@@ -540,6 +546,7 @@ for (i in 2:length(cols)) {
 
 ```
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=FALSE}
+# This data is produced in the previous step
 # saving the results of this
 for (i in 2:length(cols)) {
     write.csv(best_models[[i]],str_interp("./models_dump/${i}_model_vars.csv"))
@@ -684,8 +691,103 @@ Importing the data:
 ofp <- read.csv('../data/dt.csv')
 ```
 
+### Predicting number of physician office visits using poisson regression
+
 Creating the model:
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 mod <- glm(ofp~., family=poisson, data=ofp)
 ```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+exp(coef(mod))
+```
+
+We can see in the model that according to its definition, an increase of one unit in hospital stays increases in ~1.179x the amount of visits. Private insurance increases the rate by ~1.223x, and it makes sense, as individuals might be incentivized use their private insurance for this purpose. Males tend to make less appointments (89% that of females). Self-perceived good health also has a significant impact on hospital visits, where excellent health self-perception have fewer hospital visits vs the opposite, ~0.696x for excellent health vs ~1.28x for poor health individuals.
+
+### Comparing number of zero-visit counts to the number predicted by the model
+
+The data shows a count of 683 for zero-visits, however the model predicts that such amount is equal to 0.
+
+There might be several reasons to explain this, but maybe the algorithm considers that if there exists a probability, no matter how small, that the person will attend to the physician, then the model will choose to at least give a positive amount to a person's visit.
+
+Another reason might be that there might not be a big enough distinction between individuals that have zero-visits and not, therefore causing the model to still at least allocate a very low amount of physician visits to people, and so as a result, we get no zero-visits patients.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+vct <- predict(mod, newdata=ofp, type = "response")
+vct[vct == 0]
+```
+
+### Estimating the zero-inflated Poisson regression model and predicting number of physician office visits (all explanatory variables for $log(\mu)$ part and none in the $\phi$ part of the model)
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+mod_zip <- zeroinfl(ofp~. | 1, data=ofp)
+```
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+exp(coef(mod_zip))
+```
+
+A few changes have occurred versus the previous model. Now hospital visit counts increases the visits in ~1.17249x the visits to the physician. Males have a smaller physician gaps versus the previous model (males represent 93.6% of what females represent). The significance of private insurance is lower (~1.08966x vs ~1.223x). For self-perceived good health, the difference is also significant, but perhaps less than for the rest of the variables, where poor health doesnt seem to affect the prediction much more than in the previous model and (~1.289x vs ~1.282x). For excellent health individuals, this model will predict more visits than the previous one, but not by a lot (~0.7267x vs ~0.69628x).
+
+### Using all the explanatory variables to estimate the previous ZIP model and comparing using LRT.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+mod_zip_2 <- zeroinfl(ofp~ 1 | ., data=ofp)
+```
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+exp(coef(mod_zip_2))
+```
+
+We can see there are significant differences with the previous model. There is a significant ratio difference between males and females (could perhaps represent men lying about hospital visits) with a ~1.527x increase. Increase chronic conditions and hospital visits both reduce the factor (could perhaps represent increase in this unit for certain people that they are significantly less likely to lie, by ~0.5756x and ~0.6985x respectively). 
+
+From the perspective of truthfulness, again, private insurance means that people will *most likely* be truthful when claiming an amount of visits to the physician. (~0.4706x likely to lie)
+
+Self-perceived good health flips as well, with ~1.327x and ~1.002x for poor health.
+
+Here we see the ratios between the 1st ZIP model and 2nd ZIP model's coefficients (the results shown are not correct for intercepts but yes for the rest of the variables):
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+ratios <- c()
+zip1 <- exp(coef(mod_zip))
+zip2 <- exp(coef(mod_zip_2))
+names(zip1) <- str_replace(names(exp(coef(mod_zip))), "count", "zero")
+for (i in names(zip1)) {
+    zip1_l <- zip1[i]
+    zip2_l <- zip2[i]
+    ratios <- c(ratios, zip2_l/zip1_l)
+}
+ratios
+```
+
+Performing a LRT:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+lrtest(mod_zip, mod_zip_2)
+```
+
+When performing a LRT shows that we can reject the null hypothesis and we can keep the first ZIP model, the 2nd model would be very difficult to justify, as our interpretations are based on a speculative idea (people lying) other than the actual data.
+
+### Examining how well the models estimate 0 counts
+
+Predicting the counts using the parameter *type=response* for the first ZIP model:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+vct <- predict(mod_zip, newdata=ofp, type = "response")
+vct[vct == 0]
+```
+
+Doing so for the second yields the same result:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+vct <- predict(mod_zip_2, newdata=ofp, type = "response")
+vct[vct == 0]
+```
+
+Which hints that perhaps the right approach is to estimate such value using the probabilities obtained:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+apply(predict(mod_zip, newdata=ofp, type = "prob")*4406,2,mean)[1]
+apply(predict(mod_zip_2, newdata=ofp, type = "prob")*4406,2,mean)[1]
+```
+
+We can see that these sort of approximate the real value of 683.
