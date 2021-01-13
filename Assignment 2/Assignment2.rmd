@@ -5,7 +5,6 @@ date: "January 11th, 2020"
 output: 'pdf_document'
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
 collapse = TRUE,
@@ -98,6 +97,8 @@ $0.2506618 \leq p_{60k} \leq 0.9124486$
 The appropriate test for this would be the Hosmer-Lemeshow test with $G=6$ (corresponding to 6 groups).
 
 The DF of the test statistic for a Hosmer-Lemeshow test is $DF=G-2$, therefore, $DF = 4$
+
+\newpage
 
 ## Exercise 2
 
@@ -326,6 +327,8 @@ There's a clear overrepresentation of race group 1 in the normal birth weight su
 
 Following the model's result, we can definitely say that whether the mother was a smoker or not had the highest influence in its prediction, followed by the race, where there was a huge overrepresentation of group 3 in the low birth weight group.
 
+\newpage
+
 ## Exercise 3
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
@@ -461,6 +464,8 @@ The confidence interval for the probability of self-perceived good health for a 
 
 $0.2609291 \leq \beta_{110kg} \leq 0.4217766$
 
+\newpage
+
 ## Exercise 4
 
 Importing and manipulating the data:
@@ -488,21 +493,39 @@ The approach of this algorithm is at follows:
 
 1 - We create a vector with the column names excluding g02
 
-2- 
+2 - We create a list called *best_models* for all the variables used in each model, and *everything* for the AIC, BIC and LRT P-value vs the full model for each model in *best_models*.
+
+Each column of *best_models* corresponds with a list of variables used in each model, each row of *everything* has the scores for those corresponding columns of *best_models*.
+
+3 - We loop from 2 to 9 (2-var models up to 9-var models). We add to *best_models* all the possible 2 to 9 variable unique combinations that we have available with all our predictors.
+
+4 - we create an empty vector of AICs, BICs and LRT p-vals per amount of variables, so there will be one of these each for 2, 3, 4... etc amount of variables.
+
+5 - We create a string with the model formulas, all of the form "g02~(var1+var2+var3)^2" (for example, for 3-var models). The idea is to include all the variables in parenthesis and their 2-way interactions.
+
+6 - We calculate the AIC, BIC and LRT p-val of this model vs de full model (which also includes 2 to 9-way interactions). The way the best model is calculated is using stepAIC for each variable combination, this way we optimize for AIC and only include the best possible model with such variable combination.
+
+7 - We add these results to each vector (AICs, BICs and LRT p-vals) and we add them to a dataframe corresponding to its *i* value in the loop (*i* represents the amount of variables), so *everything[[2]]* contains a dataframe with all the AICs, BICs and LRT p-vals for the 2-variable models with their 2-way interactions (after optimizing for AIC).
+
+8 - We save both the variable lists used in each model and the results for all the tested models in a CSV document. There will be 1 CSV document per amount of variables (1 for 2-var models, 1 for 3-var models, etc.)
+
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
 # exclude target
 cols <- names(health)[names(health) != "g02"]
-vars <- list()
 best_models <- list()
 everything <- list()
-for (i in 8:9) {
+for (i in 2:length(cols)) {
     best_models[[i]] <- combinat::combn(cols,i)
     aics_l <- c()
     bics_l <- c()
     lrts_l <- c()
     for (k in 1:(length(best_models[[i]])/i)) {
-        mods <- paste(best_models[[i]][,k],collapse="+")
+        if (i == length(best_models[[i]])) {
+            mods <- paste(best_models[[i]],collapse="+")
+        } else {
+            mods <- paste(best_models[[i]][,k],collapse="+")
+        }
         curr_model <- stringr::str_interp('g02~(${mods})^2')
         md <- glm(curr_model, data=health, family=binomial)
         aic_optimized <- stepAIC(md)
@@ -511,22 +534,104 @@ for (i in 8:9) {
         test <- anova(fm, aic_optimized, test="Chisq")
         lrts_l <- c(lrts_l, test$"Pr(>Chi)"[2])
     }
-    mod <- 1:length(best_models[[i]])
+    mod <- 1:(length(best_models[[i]])/i)
     everything[[i]] <- data.frame(mod=mod,aics=aics_l,bics=bics_l,lrts=lrts_l)
 }
 
+```
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=FALSE}
 # saving the results of this
-for (i in 8:9) {
+for (i in 2:length(cols)) {
     write.csv(best_models[[i]],str_interp("./models_dump/${i}_model_vars.csv"))
     write.csv(everything[[i]],str_interp("./models_dump/${i}_var_models.csv"))
 }
 ```
 
+After performing this set of calculations we find the best possible model among all the ones we have obtained.
 
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+for (i in 2:9) {
+    everything[[i]] <- read.csv(str_interp('./models_dump/${i}_var_models.csv'))
+    best_models[[i]] <- read.csv(str_interp('./models_dump/${i}_model_vars.csv'))
+}
+```
 
-We use stepAIC to obtain the best model based on AIC and stepAIC with the parameter $k=log(n)$ to obtain the best model based on BIC.
+We then sort the dataframe with the AICs, BICs, and LRT p-vals in order of priority, our most important measure will be AIC, followed by BIC and then the LRT p-val. We basically only need the LRT to be passed and a decent AIC and BIC, but the lower the better.
 
+We will normalize the AICs, BICs and LRT p-vals using min-max scaling with values between 1 and 2 and calculate a weighted score for each measure, 4/7 of the score will correspond to AIC, and 3/7 to BIC while for the LRT p-val we will require the condition that it's below 0.05 (our chosen significance) to ensure that it does pass the test. The minimum score will correspond to the best model.
 
+First of all, we filter and keep only models which have an LRT p-val below 0.05:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+filtered <- list()
+for (i in 2:length(everything)) {
+    filtered[[i]] <- everything[[i]] %>% filter(lrts < 0.05)
+}
+```
+
+We scale the AICs and BICs and calculate the scores.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+min_max_scale <- function(vct) {return((vct - min(vct))/(max(vct) - min(vct)) + 1)}
+for (i in 2:length(everything)) {
+    everything[[i]]$score <- min_max_scale(everything[[i]]$aics)*(4/7) + 
+                             min_max_scale(everything[[i]]$bics)*(3/7)
+}
+```
+
+We sort the dataframes by score, lowest goes at the top:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+sorted <- list()
+three_best <- 
+for (i in 2:length(everything)) {
+    sorted[[i]] <- everything[[i]][order(everything[[i]]$score),]
+}
+```
+
+We check the top scores for each amount of variables:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+best <- matrix(, nrow = 8, ncol = 5)
+for (i in 2:length(everything)) {
+    best[i-1,1] <- sorted[[i]][1,1]
+    best[i-1,2] <- sorted[[i]][1,2]
+    best[i-1,3] <- sorted[[i]][1,3]
+    best[i-1,4] <- sorted[[i]][1,4]
+    best[i-1,5] <- sorted[[i]][1,5]
+}
+best <- data.frame(best)
+names(best) <- c("mod","aic","bic","lrt_pval","score")
+
+knitr::kable(
+    best,
+    booktabs=TRUE,
+    longtable=TRUE,
+    caption="best models"
+)
+```
+
+From my perspective, the model I would pick is the model 70 with 5 variables, which has an AIC of *6387.883*, a BIC of *6443.11* and passes the LRT with a p-value of *0.0124628* vs our significance of *0.05*.
+
+The chosen model is the following:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, results='hide'}
+predictors <- paste(best_models[[5]]$V70,collapse="+")
+formula <- str_interp("g02~(${predictors})^2")
+mod_raw <- glm(formula, data=health, family=binomial)
+mod <- stepAIC(mod_raw)
+```
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+formula(mod)
+```
+
+Which results from using *stepAIC* on the model:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+formula(mod_raw)
+```
+
+\newpage
 
 ## Exercise 5
 
@@ -569,5 +674,18 @@ stepAIC(model, list(upper=~Region*Type, lower= ~1))
 
 We see that according to stepAIC, the best model is the one that includes all the interactions between the variables. Returning a model with an AIC of 4300.
 
+\newpage
+
 ## Exercise 6
 
+Importing the data:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+ofp <- read.csv('../data/dt.csv')
+```
+
+Creating the model:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+mod <- glm(ofp~., family=poisson, data=ofp)
+```
