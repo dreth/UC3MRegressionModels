@@ -1,0 +1,347 @@
+---
+title: 'title'
+author: 'THE REGRESSORS'
+date: 'January 14th, 2021'
+output: 'pdf_document'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+collapse = TRUE,
+comment = '#>',
+fig.path = './figures/'
+)
+knitr::knit_engines$set(julia = JuliaCall::eng_juliacall)
+options(JULIA_HOME = '/home/dreth/julia/bin')
+```
+
+Importing libraries:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(gridExtra)
+library(outliers)
+library(PerformanceAnalytics)
+library(foreach)
+library(MASS)
+library(e1071) 
+library(VGAM)
+library(caret)
+library(klaR)
+library(arm)
+library(caTools)
+library(stepPlr)‘rvest’
+library(LiblineaR)
+library(caret)
+library(Epi)
+library(kableExtra)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+plots <- function(dataset, col, fw=FALSE, hist='default',
+                  density='default' , bins='default',
+                  xtick_angles='default', sep=FALSE, savefig='default', filename='./plot.png') {
+    var <- dataset %>% dplyr::select(col)
+    if (bins == 'default') {bins <- rep(10,2)}
+    if (xtick_angles == 'default') {xtick_angles <- rep(90,2)}
+    if (hist == 'default') {hist <- c(FALSE,FALSE)}
+    if (density == 'default') {density <- c(TRUE,TRUE)}
+    if (savefig == 'default') {savefig <- c(FALSE,14,14)}
+
+    p1 <- dataset %>% ggplot(aes(x=var[,1])) +
+        geom_boxplot() +
+        ggtitle(str_interp("${col}")) +
+        theme(axis.title.x=element_blank(),axis.text.y=element_blank())
+    p2 <- dataset %>% ggplot(aes(x=var[,1], fill=response)) +
+        geom_boxplot() +
+        ggtitle(str_interp("${col} grouped by response")) +
+        theme(axis.title.x=element_blank(),axis.text.y=element_blank())
+    p3 <- dataset %>% ggplot(aes(x=var[,1])) +
+        ggtitle(str_interp("${col}")) +
+        theme(axis.title.x=element_blank(),
+                axis.text.x = element_text(angle = xtick_angles[1]))
+    p4 <- dataset %>% ggplot(aes(x=var[,1])) +
+        ggtitle(str_interp("${col} by response group")) +
+        theme(axis.title.x=element_blank(),
+                axis.text.x = element_text(angle = xtick_angles[2]))
+    if (hist[1] == TRUE) {
+        p3 <- p3 + geom_histogram(aes(y=..density..),bins=bins[1])}
+    if (hist[2] == TRUE) {
+        p4 <- p4 + geom_histogram(show.legend = FALSE,bins=bins[2],
+                                  aes(fill=response,y=..density..))}
+    if (density[1] == TRUE) {
+        p3 <- p3 + geom_density()}
+    if (density[2] == TRUE) {
+        p4 <- p4 + geom_density(aes(group=response,colour=response,fill=response))}
+    if (fw == TRUE) {p4 <- p4 + facet_wrap(~response, nrow = 1)}
+    if (sep == TRUE) {
+        grid.arrange(p1,p2, nrow=2)
+        grid.arrange(p3,p4, nrow=2)}
+    else {grid.arrange(p1,p2,p3,p4, nrow=4)}
+    if (savefig[1] == TRUE) {ggsave(file=filename, width=savefig[2], height=savefig[3],
+                                 arrangeGrob(p1,p2,p3,p4, nrow=4))}
+}
+```
+
+Importing and manipulating the data:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+credit <- read.csv('./data/credit.csv')
+names(credit) <- tolower(names(credit))
+set.seed(1)
+```
+
+Checking if there's NAs:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+propNA2 = colMeans(is.na(credit))
+
+kbl(propNA,booktabs = T,row.names=T, col.names = "Proportion NA") %>% 
+  kable_styling(latex_options = c("striped"))
+```
+
+Summary of the data (good credit rating):
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+summary(credit[credit$response==1,])
+```
+
+Summary of the data (not good credit rating):
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+summary(credit[credit$response==0,])
+```
+
+Transforming all categorical variables to factor:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+categorical <- c("chk_acct", "new_car", "used_car", "furniture",
+                 "radio.tv", "education", "retraining", "sav_acct",
+                 "employment", "male_div", "male_single", "male_mar_or_wid",
+                 "co.applicant", "guarantor", "present_resident", "real_estate", 
+                 "prop_unkn_none", "other_install", "rent", "own_res", "job",
+                 "telephone", "foreign")
+credit$response <- as.factor(credit$response)
+for (i in 1:length(categorical)) {
+    credit$categorical[i] <- as.factor(credit$categorical[i])
+}
+names(credit)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+plt <- function(col) {
+    print(col)
+    var <- credit %>% dplyr::select(col)
+    ggplot(credit, aes(y=var[,1], fill=response)) + geom_bar()
+}
+
+plt('education')
+plt('retraining')
+```
+
+Removing irrelevant variables:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+cols <- names(credit)[2:(length(names(credit))-1)]
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, fig.height=13, fig.width=10}
+vars_non_response <- names(credit)[names(credit) != "response"]
+form <- paste(vars_non_response,collapse="+")
+
+```
+
+TTS:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+spl = createDataPartition(credit$response, p = 0.7, list = FALSE)
+Train = credit[spl,]
+Test = credit[-spl,]
+```
+
+1-variable models:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+vars <- c()
+acc <- c()
+for (i in 1:length(cols)) {
+    # formula and model
+    form <- stringr::str_interp("response~${cols[i]}")
+    mod <- glm(formula=form, family=binomial, data=Train)
+    form <- formula(mod)
+
+    # ROC curve and cutoff
+    roc1 <- Epi::ROC(form=form, data=Train, plot="ROC", lw=3, cex=1.5)
+    cutoff <- roc1$res$lr.eta[2]
+
+    # prediction
+    pred <- predict(mod, newdata=Test, type="response")
+    pred <- ifelse(pred > cutoff, 1, 0)
+    pred <- as.factor(pred)
+
+    # confusion matrix and accuracy
+    Accuracy <- confusionMatrix(pred, Test$response)$overall[1]
+    
+    # adding variables to prediction
+    vars <- c(vars, cols[i])
+    acc <- c(acc, Accuracy)
+}
+```
+
+Scores of 1-variable models:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+df <- data.frame(vars=vars, accuracy=acc)
+df[order(df$accuracy),]
+```
+
+Checking 2-variable models and interactions:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+model_formula <- function(data, combs, target, with_int=TRUE, all=FALSE) {
+    formulas <- c()
+    cols <- names(data)[2:(length(names(data))-1)]
+    combinations <- combinat::combn(cols, combs)
+    for (i in 1:length(combinations[1,])) {
+        if (with_int == TRUE) {
+            if (all == TRUE) {
+                form_pst <- paste(combinations[,i], collapse="*")
+                form <- stringr::str_interp("${target}~${form_pst}")
+                formulas <- c(formulas, form)
+            } else {
+                form_pst <- paste(combinations[,i], collapse="+")
+                form <- stringr::str_interp("${target}~(${form_pst})^${all}")
+                formulas <- c(formulas, form)
+            }
+        } else {
+            form_pst <- paste(combinations[,i], collapse="+")
+            form <- stringr::str_interp("${target}~${form_pst}")
+            formulas <- c(formulas, form)
+        }
+    }
+    return(formulas)
+}
+forms <- model_formula(Train, 2, "response", with_int=                 formulas_without        pvals
+144            response~furniture+male_single 0.9958392781
+28                response~chk_acct+telephone 0.9952971148
+106              response~new_car+num_credits 0.9921654502
+346    response~co.applicant+present_resident 0.9883530920
+4                  response~chk_acct+used_car 0.9849181807TRUE, all=2)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+modelling <- function(data, formulas) {
+    models <- list()
+    for (i in 1:length(formulas)) {
+        models[[i]] <- glm(formula=formulas[i], family=binomial, data=data)
+    }
+    return(models)
+}
+models <- modelling(Train, forms)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+test <- function(formulas_with, formulas_without, models_with_int, models_without_int) {
+    p_vals <- c()
+    for (i in 1:length(formulas_with)) {
+        p_vals <- c(p_vals, anova(models_with_int[[i]], models_without_int[[i]], test="Chisq")$"Pr(>Chi)"[2])
+        print(anova(models_with_int[[i]], models_without_int[[i]], test="Chisq"))
+    }
+    return(data.frame(formulas_with=formulas_with, formulas_without=formulas_without, pvals=p_vals))
+}
+formulas_with <- model_formula(Train, 2, "response", with_int=TRUE, all=2)
+formulas_without <- model_formula(Train, 2, "response", with_int=FALSE, all=2)
+models_with <- modelling(Train, formulas_with)
+models_without <- modelling(Train, formulas_without)
+cool_stuff <- test(formulas_with, formulas_without, models_with, models_without)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+cool_stuff[order(-cool_stuff$pvals),]
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+scoring <- function(data, models, testing, target) {
+    accuracy <- c()
+    roc_cutoff <- c()
+    for (i in 1:length(models)) {
+        # ROC curve
+        roc1 <- Epi::ROC(form=formula(models[[i]]), data=data, plot="ROC", lw=3, cex=1.5)
+        roc_cutoff <- c(roc_cutoff, roc1$res$lr.eta)
+
+        # prediction
+        pred <- predict(roc1$lr, newdata=Test, type="response")
+        pred <- ifelse(pred > roc_cutoff[i], 1, 0)
+        pred <- as.factor(pred)
+
+        # confusion matrix
+        real_vals <- testing %>% dplyr::select(target)
+        real_vals <- as.factor(real_vals)
+        accuracy <- c(accuracy,confusionMatrix(pred, real_vals)$overall[1])
+    }
+    return(list(accuracy=accuracy, cutoff=roc_cutoff))
+}
+scores <- scoring(Train, models, Test, "response")
+```
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+for (i in 1:length(two)) {
+    # with interactions
+    form_pst <- paste(two[,i], collapse="*")
+    form <- stringr::str_interp("response~${form_pst}")
+    mod <- glm(formula=form, family=binomial, data=Train)
+    form_INT <- formula(mod)
+
+    # without interactions
+    form_pst <- paste(two[,i], collapse="+")
+    form <- stringr::str_interp("response~${form_pst}")
+    mod <- glm(formula=form, family=binomial, data=Train)
+    form_NI <- formula(mod)
+
+    # ROC curve and cutoff WITH interactions
+    roc1_INT <- Epi::ROC(form=form_INT, data=Train, plot="ROC", lw=3, cex=1.5)
+    cutoff_INT <- roc1$res$lr.eta[2]
+
+    # ROC curve and cutoff WITHOUT interactions
+    roc1_NI <- Epi::ROC(form=form_NI, data=Train, plot="ROC", lw=3, cex=1.5)
+    cutoff_NI <- roc1$res$lr.eta[2]
+
+    # prediction WITH interactions
+    pred_INT <- predict(mod, newdata=Test, type="response")
+    pred_INT <- ifelse(pred_INT > cutoff, 1, 0)
+    pred_INT <- as.factor(pred)
+    # prediction WITHOUT interactions
+    pred_NI <- predict(mod, newdata=Test, type="response")
+    pred_NI <- ifelse(pred_NI > cutoff, 1, 0)
+    pred_NI <- as.factor(pred)
+
+    # confusion matrix and accuracy WITH interactions
+    Accuracy_INT <- confusionMatrix(pred_INT, Test$response)$overall[1]
+    # confusion matrix and accuracy WITHOUT interactions
+    Accuracy_NI <- confusionMatrix(pred_NI, Test$response)$overall[1]
+    
+    # adding variables to prediction
+    vars <- c(vars, form_pst)
+    acc <- c(acc, Accuracy) 
+}
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+df <- data.frame(vars=vars, accuracy=acc)
+df[order(df$accuracy),]
+```
+
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+
+mod <- glm(formula=response~sav_acct, family=binomial, data=Train)
+form <- formula(mod)
+roc1 <- Epi::ROC(form=response~sav_acct, data=Train, plot="ROC", lw=3, cex=1.5)
+cutoff <- roc1$res$lr.eta
+pred <- predict(mod, newdata=Test, type="response")
+pred <- ifelse(pred > cutoff, 1, 0)
+pred <- as.factor(pred)
+confusionMatrix(pred, Test$response)$overall[1]
+
+```
