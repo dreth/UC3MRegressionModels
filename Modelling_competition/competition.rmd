@@ -125,7 +125,7 @@ categorical <- c("chk_acct", "new_car", "used_car", "furniture",
                  "telephone", "foreign")
 credit$response <- as.factor(credit$response)
 for (i in 1:length(categorical)) {
-    credit$categorical[i] <- as.factor(credit$categorical[i])
+    credit$categorical[i][,i] <- as.factor(credit$categorical[i][,i])
 }
 names(credit)
 ```
@@ -223,12 +223,7 @@ model_formula <- function(data, combs, target, with_int=TRUE, all=FALSE) {
     }
     return(formulas)
 }
-forms <- model_formula(Train, 2, "response", with_int=                 formulas_without        pvals
-144            response~furniture+male_single 0.9958392781
-28                response~chk_acct+telephone 0.9952971148
-106              response~new_car+num_credits 0.9921654502
-346    response~co.applicant+present_resident 0.9883530920
-4                  response~chk_acct+used_car 0.9849181807TRUE, all=2)
+forms <- model_formula(Train, 2, "response", with_int=TRUE, all=2)
 ```
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
@@ -247,19 +242,20 @@ test <- function(formulas_with, formulas_without, models_with_int, models_withou
     p_vals <- c()
     for (i in 1:length(formulas_with)) {
         p_vals <- c(p_vals, anova(models_with_int[[i]], models_without_int[[i]], test="Chisq")$"Pr(>Chi)"[2])
-        print(anova(models_with_int[[i]], models_without_int[[i]], test="Chisq"))
+        print(p_vals[i])
     }
     return(data.frame(formulas_with=formulas_with, formulas_without=formulas_without, pvals=p_vals))
 }
 formulas_with <- model_formula(Train, 2, "response", with_int=TRUE, all=2)
-formulas_without <- model_formula(Train, 2, "response", with_int=FALSE, all=2)
+formulas_without <- model_formula(Train, 2, "response", with_int=FALSE)
 models_with <- modelling(Train, formulas_with)
 models_without <- modelling(Train, formulas_without)
 cool_stuff <- test(formulas_with, formulas_without, models_with, models_without)
 ```
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-cool_stuff[order(-cool_stuff$pvals),]
+cool_stuff <- cool_stuff[order(-cool_stuff$pvals),]
+write.csv(cool_stuff, "./outputs/2_var_models_LRT.csv")
 ```
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
