@@ -32,11 +32,13 @@ library(caret)
 library(klaR)
 library(arm)
 library(caTools)
-library(stepPlr)‘rvest’
+library(stepPlr)
 library(LiblineaR)
 library(caret)
 library(Epi)
 library(kableExtra)
+library(ROSE)
+library(ResourceSelection)
 ```
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
@@ -93,66 +95,6 @@ names(credit) <- tolower(names(credit))
 set.seed(1)
 ```
 
-Checking if there's NAs:
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-propNA2 = colMeans(is.na(credit))
-
-kbl(propNA,booktabs = T,row.names=T, col.names = "Proportion NA") %>% 
-  kable_styling(latex_options = c("striped"))
-```
-
-Summary of the data (good credit rating):
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-summary(credit[credit$response==1,])
-```
-
-Summary of the data (not good credit rating):
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-summary(credit[credit$response==0,])
-```
-
-Transforming all categorical variables to factor:
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-categorical <- c("chk_acct", "new_car", "used_car", "furniture",
-                 "radio.tv", "education", "retraining", "sav_acct",
-                 "employment", "male_div", "male_single", "male_mar_or_wid",
-                 "co.applicant", "guarantor", "present_resident", "real_estate", 
-                 "prop_unkn_none", "other_install", "rent", "own_res", "job",
-                 "telephone", "foreign")
-credit$response <- as.factor(credit$response)
-for (i in 1:length(categorical)) {
-    credit$categorical[i][,i] <- as.factor(credit$categorical[i][,i])
-}
-names(credit)
-```
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-plt <- function(col) {
-    print(col)
-    var <- credit %>% dplyr::select(col)
-    ggplot(credit, aes(y=var[,1], fill=response)) + geom_bar()
-}
-
-plt('education')
-plt('retraining')
-```
-
-Removing irrelevant variables:
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-cols <- names(credit)[2:(length(names(credit))-1)]
-```
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE, fig.height=13, fig.width=10}
-vars_non_response <- names(credit)[names(credit) != "response"]
-form <- paste(vars_non_response,collapse="+")
-
-```
-
 TTS:
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
@@ -161,43 +103,7 @@ Train = credit[spl,]
 Test = credit[-spl,]
 ```
 
-1-variable models:
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-vars <- c()
-acc <- c()
-for (i in 1:length(cols)) {
-    # formula and model
-    form <- stringr::str_interp("response~${cols[i]}")
-    mod <- glm(formula=form, family=binomial, data=Train)
-    form <- formula(mod)
-
-    # ROC curve and cutoff
-    roc1 <- Epi::ROC(form=form, data=Train, plot="ROC", lw=3, cex=1.5)
-    cutoff <- roc1$res$lr.eta[2]
-
-    # prediction
-    pred <- predict(mod, newdata=Test, type="response")
-    pred <- ifelse(pred > cutoff, 1, 0)
-    pred <- as.factor(pred)
-
-    # confusion matrix and accuracy
-    Accuracy <- confusionMatrix(pred, Test$response)$overall[1]
-    
-    # adding variables to prediction
-    vars <- c(vars, cols[i])
-    acc <- c(acc, Accuracy)
-}
-```
-
-Scores of 1-variable models:
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-df <- data.frame(vars=vars, accuracy=acc)
-df[order(df$accuracy),]
-```
-
-Checking 2-variable models and interactions:
+Create formulas function:
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 model_formula <- function(data, combs, target, with_int=TRUE, all=FALSE) {
@@ -226,6 +132,8 @@ model_formula <- function(data, combs, target, with_int=TRUE, all=FALSE) {
 forms <- model_formula(Train, 2, "response", with_int=TRUE, all=2)
 ```
 
+Modelling function:
+
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 modelling <- function(data, formulas) {
     models <- list()
@@ -237,107 +145,201 @@ modelling <- function(data, formulas) {
 models <- modelling(Train, forms)
 ```
 
+
+LRT for models with and without interactions:
+
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 test <- function(formulas_with, formulas_without, models_with_int, models_without_int) {
     p_vals <- c()
     for (i in 1:length(formulas_with)) {
         p_vals <- c(p_vals, anova(models_with_int[[i]], models_without_int[[i]], test="Chisq")$"Pr(>Chi)"[2])
-        print(p_vals[i])
     }
     return(data.frame(formulas_with=formulas_with, formulas_without=formulas_without, pvals=p_vals))
 }
-formulas_with <- model_formula(Train, 2, "response", with_int=TRUE, all=2)
-formulas_without <- model_formula(Train, 2, "response", with_int=FALSE)
+formulas_with <- model_formula(Train, 3, "response", with_int=TRUE, all=3)
+formulas_without <- model_formula(Train, 3, "response", with_int=FALSE)
 models_with <- modelling(Train, formulas_with)
 models_without <- modelling(Train, formulas_without)
-cool_stuff <- test(formulas_with, formulas_without, models_with, models_without)
 ```
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-cool_stuff <- cool_stuff[order(-cool_stuff$pvals),]
-write.csv(cool_stuff, "./outputs/2_var_models_LRT.csv")
-```
+Scoring function:
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-scoring <- function(data, models, testing, target) {
+scoring <- function(data, testing, models, formulas) {
     accuracy <- c()
     roc_cutoff <- c()
+    roc_auc <- c()
+    roc_sensitivity <- c()
+    roc_specificity <- c()
+    # hoslem <- c()
     for (i in 1:length(models)) {
         # ROC curve
         roc1 <- Epi::ROC(form=formula(models[[i]]), data=data, plot="ROC", lw=3, cex=1.5)
-        roc_cutoff <- c(roc_cutoff, roc1$res$lr.eta)
+        cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
 
-        # prediction
-        pred <- predict(roc1$lr, newdata=Test, type="response")
-        pred <- ifelse(pred > roc_cutoff[i], 1, 0)
-        pred <- as.factor(pred)
+        # ROC params
+        roc_cutoff <- c(roc_cutoff, roc1$res$lr.eta[cutoff])
+        roc_auc <- c(roc_auc, roc1$AUC)
+        roc_sensitivity <- c(roc_sensitivity, roc1$res$sens[cutoff])
+        roc_specificity <- c(roc_specificity, roc1$res$spec[cutoff])
 
-        # confusion matrix
-        real_vals <- testing %>% dplyr::select(target)
-        real_vals <- as.factor(real_vals)
+        # prediction using BEST cutoff
+        prediction <- predict(models[[i]], newdata=testing, type="response")
+        prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
+        pred <- as.factor(prediction)
+
+        # target score 
+        real_vals <- as.factor(testing$response)
+
+        # hosmer lemeshow goodness of fit test
+        # hltest <- hoslem.test(real_vals, prediction)$p.value
+        # hoslem <- c(hoslem, hltest)
+
+        # confusion matrix score
         accuracy <- c(accuracy,confusionMatrix(pred, real_vals)$overall[1])
     }
-    return(list(accuracy=accuracy, cutoff=roc_cutoff))
+    return(data.frame(formula=formulas,
+                      accuracy=accuracy, 
+                      cutoff=roc_cutoff, 
+                      roc_auc=roc_auc, 
+                      sensitivity=roc_sensitivity, 
+                      specificity=roc_specificity))
 }
-scores <- scoring(Train, models, Test, "response")
 ```
+
+Transforming all categorical variables to factor:
+
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-for (i in 1:length(two)) {
-    # with interactions
-    form_pst <- paste(two[,i], collapse="*")
-    form <- stringr::str_interp("response~${form_pst}")
+vars <- c("obs.","chk_acct","duration","history",
+          "new_car","used_car","furniture","radio.tv",
+          "education","retraining","amount","sav_acct",
+          "employment","install_rate","male_div","male_single",
+          "male_mar_or_wid","co.applicant","guarantor","present_resident",
+          "real_estate","prop_unkn_none","age","other_install",
+          "rent","own_res","num_credits","job",
+          "num_dependents","telephone","foreign","response")
+vars_to_remove <- c("own_res", "obs", "real_estate","response")
+credit$response <- as.factor(credit$response)
+names(credit)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+plt <- function(col) {
+    print(col)
+    var <- credit %>% dplyr::select(col)
+    ggplot(credit, aes(y=var[,1], fill=response)) + geom_bar()
+}
+
+plt('co.applicant')
+plt('guarantor')
+```
+
+1-variable models:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+cols <- names(credit)[2:(length(names(credit))-1)]
+vars <- c()
+acc <- c()
+for (i in 1:length(cols)) {
+    # formula and model
+    form <- stringr::str_interp("response~${cols[i]}")
     mod <- glm(formula=form, family=binomial, data=Train)
-    form_INT <- formula(mod)
+    form <- formula(mod)
 
-    # without interactions
-    form_pst <- paste(two[,i], collapse="+")
-    form <- stringr::str_interp("response~${form_pst}")
-    mod <- glm(formula=form, family=binomial, data=Train)
-    form_NI <- formula(mod)
+    # ROC curve and cutoff
+    roc1 <- Epi::ROC(form=form, data=Train, plot="ROC", lw=3, cex=1.5)
+    cutoff <- roc1$res$lr.eta[2]
 
-    # ROC curve and cutoff WITH interactions
-    roc1_INT <- Epi::ROC(form=form_INT, data=Train, plot="ROC", lw=3, cex=1.5)
-    cutoff_INT <- roc1$res$lr.eta[2]
+    # prediction
+    pred <- predict(mod, newdata=Test, type="response")
+    pred <- ifelse(pred > cutoff, 1, 0)
+    pred <- as.factor(pred)
 
-    # ROC curve and cutoff WITHOUT interactions
-    roc1_NI <- Epi::ROC(form=form_NI, data=Train, plot="ROC", lw=3, cex=1.5)
-    cutoff_NI <- roc1$res$lr.eta[2]
-
-    # prediction WITH interactions
-    pred_INT <- predict(mod, newdata=Test, type="response")
-    pred_INT <- ifelse(pred_INT > cutoff, 1, 0)
-    pred_INT <- as.factor(pred)
-    # prediction WITHOUT interactions
-    pred_NI <- predict(mod, newdata=Test, type="response")
-    pred_NI <- ifelse(pred_NI > cutoff, 1, 0)
-    pred_NI <- as.factor(pred)
-
-    # confusion matrix and accuracy WITH interactions
-    Accuracy_INT <- confusionMatrix(pred_INT, Test$response)$overall[1]
-    # confusion matrix and accuracy WITHOUT interactions
-    Accuracy_NI <- confusionMatrix(pred_NI, Test$response)$overall[1]
+    # confusion matrix and accuracy
+    Accuracy <- confusionMatrix(pred, Test$response)$overall[1]
     
     # adding variables to prediction
-    vars <- c(vars, form_pst)
-    acc <- c(acc, Accuracy) 
+    vars <- c(vars, cols[i])
+    acc <- c(acc, Accuracy)
 }
+df <- data.frame(vars=vars, accuracy=acc)
+write.csv(df[order(df$accuracy),], './outputs/1_var_models.csv')
+```
+
+Checking 2-variable models and interactions:
+
+
+
+
+
+
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+cool_stuff <- test(formulas_with, formulas_without, models_with, models_without)
+cool_stuff <- na.omit(cool_stuff[order(-cool_stuff$pvals),])
+cool_stuff <- cool_stuff[cool_stuff$pvals < 0.01,]
+write.csv(cool_stuff, "./outputs/3_var_models_LRT_01.csv")
+
+scrs <- scoring(Train, Test, models_with, formulas_with)
+write.csv(scrs, "./outputs/3_val_scores_with.csv")
+
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+cool_stuff <- na.omit(cool_stuff[cool_stuff$pvals < 0.02,])
+model_numbers <- as.numeric(rownames(cool_stuff))
+all_vars <- list()
+for (i in 1:length(model_numbers)) {
+    all_vars[[i]] <- all.vars(formula(models_with[[model_numbers[i]]])[-2])
+    all_vars[[i]] <- c(all_vars[[i]], paste(all_vars[[i]],collapse=":"))
+}
+vars <- c()
+for (i in 1:length(all_vars)) {
+    vars <- c(vars, all_vars[[i]][1])
+}
+
+test_model <- glm(form=str_interp("response~(${paste(vars, collapse='+')})^2"), family=binomial, data=Train)
+staic <- stepAIC(test_model)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+scores <- read.csv('./outputs/scores_with.csv')
+scores_without <- read.csv('./outputs/scores_without.csv')
+p_value <- read.csv('./outputs/2_var_models_LRT.csv')
+scores = scores %>% rename("formulas_with"="formula")
+a = merge(p_value, scores, by = "formulas_with")
+
+scores_without = scores_without %>% rename("formulas_without"="formula")
+b = merge(a,scores_without, by =  "formulas_without")
+cool_stuff_2 <- b[b$accuracy.x>0.68,]
+model_numbers <- as.numeric(rownames(cool_stuff_2))
+all_vars <- list()
+for (i in 1:length(model_numbers)) {
+    all_vars[[i]] <- all.vars(formula(models_with[[model_numbers[i]]])[-2])
+    all_vars[[i]] <- c(all_vars[[i]], paste(all_vars[[i]],collapse=":"))
+}
+vars <- c()
+for (i in 1:length(all_vars)) {
+    vars <- c(vars, all_vars[[i]][1])
+}
+vars <- unique(vars)
+
+test_model <- glm(form=str_interp("response~${paste(vars, collapse='+')}"), family=binomial, data=Train)
+staic <- stepAIC(test_model)
+
+roc1 <- Epi::ROC(form=formula(staic), data=Train, plot="ROC", lw=3, cex=1.5)
+cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
+
+prediction <- predict(staic, newdata=Test, type="response")
+prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
+pred <- as.factor(prediction)
+real_vals <- Test$response
+confusionMatrix(pred, real_vals)
+
+credit_2 <- credit %>% dplyr::select(vars)
 ```
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 df <- data.frame(vars=vars, accuracy=acc)
 df[order(df$accuracy),]
-```
-
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-
-mod <- glm(formula=response~sav_acct, family=binomial, data=Train)
-form <- formula(mod)
-roc1 <- Epi::ROC(form=response~sav_acct, data=Train, plot="ROC", lw=3, cex=1.5)
-cutoff <- roc1$res$lr.eta
-pred <- predict(mod, newdata=Test, type="response")
-pred <- ifelse(pred > cutoff, 1, 0)
-pred <- as.factor(pred)
-confusionMatrix(pred, Test$response)$overall[1]
-
 ```
