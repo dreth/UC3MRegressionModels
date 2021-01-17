@@ -36,55 +36,8 @@ library(stepPlr)
 library(LiblineaR)
 library(caret)
 library(Epi)
-library(kableExtra)
 library(ROSE)
 library(ResourceSelection)
-```
-
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
-plots <- function(dataset, col, fw=FALSE, hist='default',
-                  density='default' , bins='default',
-                  xtick_angles='default', sep=FALSE, savefig='default', filename='./plot.png') {
-    var <- dataset %>% dplyr::select(col)
-    if (bins == 'default') {bins <- rep(10,2)}
-    if (xtick_angles == 'default') {xtick_angles <- rep(90,2)}
-    if (hist == 'default') {hist <- c(FALSE,FALSE)}
-    if (density == 'default') {density <- c(TRUE,TRUE)}
-    if (savefig == 'default') {savefig <- c(FALSE,14,14)}
-
-    p1 <- dataset %>% ggplot(aes(x=var[,1])) +
-        geom_boxplot() +
-        ggtitle(str_interp("${col}")) +
-        theme(axis.title.x=element_blank(),axis.text.y=element_blank())
-    p2 <- dataset %>% ggplot(aes(x=var[,1], fill=response)) +
-        geom_boxplot() +
-        ggtitle(str_interp("${col} grouped by response")) +
-        theme(axis.title.x=element_blank(),axis.text.y=element_blank())
-    p3 <- dataset %>% ggplot(aes(x=var[,1])) +
-        ggtitle(str_interp("${col}")) +
-        theme(axis.title.x=element_blank(),
-                axis.text.x = element_text(angle = xtick_angles[1]))
-    p4 <- dataset %>% ggplot(aes(x=var[,1])) +
-        ggtitle(str_interp("${col} by response group")) +
-        theme(axis.title.x=element_blank(),
-                axis.text.x = element_text(angle = xtick_angles[2]))
-    if (hist[1] == TRUE) {
-        p3 <- p3 + geom_histogram(aes(y=..density..),bins=bins[1])}
-    if (hist[2] == TRUE) {
-        p4 <- p4 + geom_histogram(show.legend = FALSE,bins=bins[2],
-                                  aes(fill=response,y=..density..))}
-    if (density[1] == TRUE) {
-        p3 <- p3 + geom_density()}
-    if (density[2] == TRUE) {
-        p4 <- p4 + geom_density(aes(group=response,colour=response,fill=response))}
-    if (fw == TRUE) {p4 <- p4 + facet_wrap(~response, nrow = 1)}
-    if (sep == TRUE) {
-        grid.arrange(p1,p2, nrow=2)
-        grid.arrange(p3,p4, nrow=2)}
-    else {grid.arrange(p1,p2,p3,p4, nrow=4)}
-    if (savefig[1] == TRUE) {ggsave(file=filename, width=savefig[2], height=savefig[3],
-                                 arrangeGrob(p1,p2,p3,p4, nrow=4))}
-}
 ```
 
 Importing and manipulating the data:
@@ -92,23 +45,52 @@ Importing and manipulating the data:
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 credit <- read.csv('./data/credit.csv')
 names(credit) <- tolower(names(credit))
-set.seed(1)
+```
+
+Basic variable selection:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+vars <- c("obs.","chk_acct","duration","history",
+          "new_car","used_car","furniture","radio.tv",
+          "education","retraining","amount","sav_acct",
+          "employment","install_rate","male_div","male_single",
+          "male_mar_or_wid","co.applicant","guarantor","present_resident",
+          "real_estate","prop_unkn_none","age","other_install",
+          "rent","own_res","num_credits","job",
+          "num_dependents","telephone","foreign","response")
+          
+vars_to_remove <- c("own_res", "obs.", "real_estate")
+
+credit <- credit %>% dplyr::select(setdiff(vars,vars_to_remove))
+credit$response <- as.factor(credit$response)
+names(credit)
+```
+
+Given that *amount* is NOT normally distributed, we take the log of it: tits
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+credit$amount <- log(credit$amount + 1)
+credit$age <- log(credit$age + 1)
+credit$duration <- log(credit$duration + 1)
 ```
 
 TTS:
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-spl = createDataPartition(credit$response, p = 0.7, list = FALSE)
+set.seed(12)
+spl = caret::createDataPartition(credit$response, p = 0.8, list = FALSE)
 Train = credit[spl,]
 Test = credit[-spl,]
+Train$response <- as.factor(Train$response)
+Test$response <- as.factor(Test$response)
 ```
 
-Create formulas function:
+We define a function to obtain the formula of all models with and without a chosen amount of interactions (2-way, 3-way, etc):
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 model_formula <- function(data, combs, target, with_int=TRUE, all=FALSE) {
     formulas <- c()
-    cols <- names(data)[2:(length(names(data))-1)]
+    cols <- names(data)[1:(length(names(data))-1)]
     combinations <- combinat::combn(cols, combs)
     for (i in 1:length(combinations[1,])) {
         if (with_int == TRUE) {
@@ -129,7 +111,6 @@ model_formula <- function(data, combs, target, with_int=TRUE, all=FALSE) {
     }
     return(formulas)
 }
-forms <- model_formula(Train, 2, "response", with_int=TRUE, all=2)
 ```
 
 Modelling function:
@@ -142,24 +123,22 @@ modelling <- function(data, formulas) {
     }
     return(models)
 }
-models <- modelling(Train, forms)
 ```
-
 
 LRT for models with and without interactions:
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 test <- function(formulas_with, formulas_without, models_with_int, models_without_int) {
     p_vals <- c()
+    aic_with <- c()
+    aic_without <- c()
     for (i in 1:length(formulas_with)) {
         p_vals <- c(p_vals, anova(models_with_int[[i]], models_without_int[[i]], test="Chisq")$"Pr(>Chi)"[2])
+        aic_with <- c(aic_with, AIC(models_with_int[[i]]))
+        aic_without <- c(aic_without, AIC(models_without_int[[i]]))
     }
-    return(data.frame(formulas_with=formulas_with, formulas_without=formulas_without, pvals=p_vals))
+    return(data.frame(formulas_with=formulas_with, formulas_without=formulas_without, pvals=p_vals, aic_with=aic_with, aic_without=aic_without))
 }
-formulas_with <- model_formula(Train, 3, "response", with_int=TRUE, all=3)
-formulas_without <- model_formula(Train, 3, "response", with_int=FALSE)
-models_with <- modelling(Train, formulas_with)
-models_without <- modelling(Train, formulas_without)
 ```
 
 Scoring function:
@@ -196,7 +175,7 @@ scoring <- function(data, testing, models, formulas) {
         # hoslem <- c(hoslem, hltest)
 
         # confusion matrix score
-        accuracy <- c(accuracy,confusionMatrix(pred, real_vals)$overall[1])
+        accuracy <- c(accuracy,caret::confusionMatrix(pred, real_vals)$overall[1])
     }
     return(data.frame(formula=formulas,
                       accuracy=accuracy, 
@@ -207,37 +186,26 @@ scoring <- function(data, testing, models, formulas) {
 }
 ```
 
-Transforming all categorical variables to factor:
+### We run a model with *all the variables*
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-vars <- c("obs.","chk_acct","duration","history",
-          "new_car","used_car","furniture","radio.tv",
-          "education","retraining","amount","sav_acct",
-          "employment","install_rate","male_div","male_single",
-          "male_mar_or_wid","co.applicant","guarantor","present_resident",
-          "real_estate","prop_unkn_none","age","other_install",
-          "rent","own_res","num_credits","job",
-          "num_dependents","telephone","foreign","response")
-vars_to_remove <- c("own_res", "obs", "real_estate","response")
-credit$response <- as.factor(credit$response)
-names(credit)
+mod <- glm(formula=response~., family=binomial, data=Train)
+roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
+cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
+prediction <- predict(mod, newdata=Test, type="response")
+prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
+pred <- as.factor(prediction)
+caret::confusionMatrix(pred, Test$response)
 ```
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-plt <- function(col) {
-    print(col)
-    var <- credit %>% dplyr::select(col)
-    ggplot(credit, aes(y=var[,1], fill=response)) + geom_bar()
-}
+Using all our variables we reach an accuracy of 0.785, which so far is decent, but this can improve. 
 
-plt('co.applicant')
-plt('guarantor')
-```
+### Testing 1-variable models
 
 1-variable models:
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-cols <- names(credit)[2:(length(names(credit))-1)]
+cols <- names(credit)[1:(length(names(credit))-1)]
 vars <- c()
 acc <- c()
 for (i in 1:length(cols)) {
@@ -256,90 +224,223 @@ for (i in 1:length(cols)) {
     pred <- as.factor(pred)
 
     # confusion matrix and accuracy
-    Accuracy <- confusionMatrix(pred, Test$response)$overall[1]
+    Accuracy <- caret::confusionMatrix(pred, Test$response)$overall[1]
     
     # adding variables to prediction
     vars <- c(vars, cols[i])
     acc <- c(acc, Accuracy)
 }
 df <- data.frame(vars=vars, accuracy=acc)
-write.csv(df[order(df$accuracy),], './outputs/1_var_models.csv')
+df <- df[order(-df$accuracy),][1:10,]
+knitr::kable(
+    df,
+    booktabs=TRUE,
+    longtable=TRUE,
+    caption="best models"
+)
 ```
 
-Checking 2-variable models and interactions:
+We can see that (individually), the best variables that we obtain are *chk_acct*, *duration*, *amount*, *age*, *history*, *education*, *co.applicant*, *retraining*, *other_install* and *prop_unkn_none*.
 
+### Testing models with and without variables to check significance
 
+Here we perform LRT to check the significance of individual variables (lower is better):
 
-
-
-
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-cool_stuff <- test(formulas_with, formulas_without, models_with, models_without)
-cool_stuff <- na.omit(cool_stuff[order(-cool_stuff$pvals),])
-cool_stuff <- cool_stuff[cool_stuff$pvals < 0.01,]
-write.csv(cool_stuff, "./outputs/3_var_models_LRT_01.csv")
-
-scrs <- scoring(Train, Test, models_with, formulas_with)
-write.csv(scrs, "./outputs/3_val_scores_with.csv")
-
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+sig_scores <- c()
+vars <- c()
+aics <- c()
+cols <- names(credit)[names(credit) != "response"]
+mod1 <- glm(formula=response~., family=binomial, data=Train)
+for (i in 1:length(cols)) {
+    # variables
+    vars_selected <- setdiff(names(credit), c(names(credit)[i],"response"))
+    # formulas
+    formula2 <- stringr::str_interp("response~${paste(vars_selected, collapse='+')}")
+    vars <- c(vars, cols[i])
+    # model and ROC
+    mod2 <- glm(formula=formula2, family=binomial, data=Train)
+    # pval
+    sig_scores <- c(sig_scores, anova(mod1, mod2, test="Chisq")$"Pr(>Chi)"[2])
+    # AIC
+    aics <- c(aics, AIC(mod2))
+}
+df <- data.frame(vars=vars,scores=sig_scores,aic=aics)
+knitr::kable(
+    df[order(-df$scores),],
+    booktabs=TRUE,
+    longtable=TRUE,
+    caption="best models"
+)
 ```
 
+This allows us to remove *furniture* and *male_mar_or_wid* which seem to not be signficant.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+vars <- c("obs.","chk_acct","duration","history",
+          "new_car","used_car","furniture","radio.tv",
+          "education","retraining","amount","sav_acct",
+          "employment","install_rate","male_div","male_single",
+          "male_mar_or_wid","co.applicant","guarantor","present_resident",
+          "real_estate","prop_unkn_none","age","other_install",
+          "rent","own_res","num_credits","job",
+          "num_dependents","telephone","foreign","response")
+          
+vars_to_remove <- c("own_res", "obs.", "real_estate", "furniture", "male_mar_or_wid")
+
+credit <- credit %>% dplyr::select(setdiff(vars,vars_to_remove))
+credit$response <- as.factor(credit$response)
+names(credit)
+```
+
+### Testing 2-variable models with and without interactions
+
+We create models with all the combinations of 2 variables and then we perform LRT for models with and without interactions. Then we select models with an LRT p-value under 0.005, in order to keep the most important interactions.
+
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-cool_stuff <- na.omit(cool_stuff[cool_stuff$pvals < 0.02,])
-model_numbers <- as.numeric(rownames(cool_stuff))
+formulas_with <- model_formula(credit, 2, "response", with_int=TRUE, all=2)
+formulas_without <- model_formula(credit, 2, "response", with_int=FALSE)
+models_with <- modelling(Train, formulas_with)
+models_without <- modelling(Train, formulas_without)
+```
+
+We run the tests:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+two_var_combs <- test(formulas_with, formulas_without, models_with, models_without)
+```
+
+We remove NAs, given that these interactions' product is 0 for all values, therefore, the LRT returns a p-value of 1 (meaning there's no difference between the models).
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+two_var_combs <- na.omit(two_var_combs[order(-two_var_combs$pvals),])
+best_2_vars <- two_var_combs[two_var_combs$pvals < 0.005,]
+```
+
+We present the table showing the model formulas and the p-values:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+knitr::kable(
+    best_2_vars,
+    booktabs=TRUE,
+    longtable=TRUE,
+    caption="best models"
+)
+```
+
+### Testing a model using the best 2-way interactions
+
+We also use all the variables as we did previously, however, we include the interactions selected:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+model_numbers <- as.numeric(rownames(best_2_vars))
 all_vars <- list()
 for (i in 1:length(model_numbers)) {
     all_vars[[i]] <- all.vars(formula(models_with[[model_numbers[i]]])[-2])
     all_vars[[i]] <- c(all_vars[[i]], paste(all_vars[[i]],collapse=":"))
 }
-vars <- c()
-for (i in 1:length(all_vars)) {
-    vars <- c(vars, all_vars[[i]][1])
-}
+all_vars
 
-test_model <- glm(form=str_interp("response~(${paste(vars, collapse='+')})^2"), family=binomial, data=Train)
-staic <- stepAIC(test_model)
+two_vars <- c()
+for (i in 1:length(all_vars)) {
+    two_vars <- c(two_vars, all_vars[[i]][1],all_vars[[i]][3])
+}
+two_vars <- unique(two_vars)
+two_vars
 ```
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-scores <- read.csv('./outputs/scores_with.csv')
-scores_without <- read.csv('./outputs/scores_without.csv')
-p_value <- read.csv('./outputs/2_var_models_LRT.csv')
-scores = scores %>% rename("formulas_with"="formula")
-a = merge(p_value, scores, by = "formulas_with")
-
-scores_without = scores_without %>% rename("formulas_without"="formula")
-b = merge(a,scores_without, by =  "formulas_without")
-cool_stuff_2 <- b[b$accuracy.x>0.68,]
-model_numbers <- as.numeric(rownames(cool_stuff_2))
-all_vars <- list()
-for (i in 1:length(model_numbers)) {
-    all_vars[[i]] <- all.vars(formula(models_with[[model_numbers[i]]])[-2])
-    all_vars[[i]] <- c(all_vars[[i]], paste(all_vars[[i]],collapse=":"))
-}
-vars <- c()
-for (i in 1:length(all_vars)) {
-    vars <- c(vars, all_vars[[i]][1])
-}
-vars <- unique(vars)
-
-test_model <- glm(form=str_interp("response~${paste(vars, collapse='+')}"), family=binomial, data=Train)
-staic <- stepAIC(test_model)
-
-roc1 <- Epi::ROC(form=formula(staic), data=Train, plot="ROC", lw=3, cex=1.5)
+vars_selected <- unique(c(two_vars, names(credit)))
+mod <- glm(formula=str_interp("response~${paste(vars_selected, collapse='+')}"), family=binomial, data=Train)
+roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
 cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
-
-prediction <- predict(staic, newdata=Test, type="response")
+prediction <- predict(mod, newdata=Test, type="response")
 prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
 pred <- as.factor(prediction)
-real_vals <- Test$response
-confusionMatrix(pred, real_vals)
+caret::confusionMatrix(pred, Test$response)
+```
 
-credit_2 <- credit %>% dplyr::select(vars)
+The model didn't improve much given that we have essentially the same accuracy, but we have higher sensitivity, therefore we keep testing.
+
+### Testing 3-variable models with and without interactions
+
+We create models with all the combinations of 3 variables and then we perform LRT for models with and without interactions. Then we select models with an LRT p-value under 0.0005, in order to keep the most important interactions.
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+formulas_with <- model_formula(credit, 3, "response", with_int=TRUE, all=3)
+formulas_without <- model_formula(credit, 3, "response", with_int=FALSE)
+models_with <- modelling(Train, formulas_with)
+models_without <- modelling(Train, formulas_without)
+```
+
+We run the tests:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+three_var_combs <- test(formulas_with, formulas_without, models_with, models_without)
+```
+
+We remove NAs, given that these interactions' product is 0 for all values, therefore, the LRT returns a p-value of 1 (meaning there's no difference between the models).
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+three_var_combs <- na.omit(three_var_combs[order(-three_var_combs$pvals),])
+best_3_vars <- three_var_combs[three_var_combs$pvals < 0.0005,]
+```
+
+We present the table showing the model formulas and the p-values:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+knitr::kable(
+    best_3_vars,
+    booktabs=TRUE,
+    longtable=TRUE,
+    caption="best models"
+)
+```
+
+
+### Testing a model using the best 3-way and 2-way interactions
+
+We also use all the variables as we did previously, however, we include the interactions selected:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+model_numbers <- as.numeric(rownames(best_3_vars))
+all_vars <- list()
+for (i in 1:length(model_numbers)) {
+    all_vars[[i]] <- all.vars(formula(models_with[[model_numbers[i]]])[-2])
+    all_vars[[i]] <- c(all_vars[[i]], paste(all_vars[[i]],collapse=":"))
+}
+all_vars
+
+three_vars <- c()
+for (i in 1:length(all_vars)) {
+    three_vars <- c(three_vars, all_vars[[i]][1],all_vars[[i]][4])
+}
+three_vars <- unique(three_vars)
+three_vars
 ```
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
-df <- data.frame(vars=vars, accuracy=acc)
-df[order(df$accuracy),]
+vars_selected <- unique(c(three_vars, names(credit), two_vars))
+mod <- glm(formula=str_interp("response~${paste(vars_selected, collapse='+')}"), family=binomial, data=Train)
+roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
+cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
+prediction <- predict(mod, newdata=Test, type="response")
+prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
+pred <- as.factor(prediction)
+caret::confusionMatrix(pred, Test$response)
 ```
+
+We remove the variables *radio.tv:retraining:age* and *used_car:amount:education* given that they have NA coefficients:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+vars_selected <- unique(c(three_vars, names(credit), two_vars))
+vars_selected <- vars_selected[vars_selected != "used_car:education:amount" & vars_selected != "radio.tv:retraining:age"]
+mod <- glm(formula=str_interp("response~${paste(vars_selected, collapse='+')}"), family=binomial, data=Train)
+roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
+cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
+prediction <- predict(mod, newdata=Test, type="response")
+prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
+pred <- as.factor(prediction)
+caret::confusionMatrix(pred, Test$response)
+```
+

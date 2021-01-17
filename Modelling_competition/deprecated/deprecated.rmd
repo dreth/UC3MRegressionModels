@@ -1,0 +1,138 @@
+
+### Testing all possible 10 variable models with the selected variables
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+top_5 <- list()
+formula_list <- list()
+for (k in 1:10) {
+    aics <- c()
+    bics <- c()
+    acc <- c()
+    forms <- c()
+    formulas <- c()
+    for (i in 1:1000) {
+        test_vars <- sample(vars_selected, 10)
+        form <- str_interp("response~${paste(test_vars, collapse='+')}")
+        mod <- glm(formula=form, family=binomial, data=Train)
+        roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
+        cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
+        prediction <- predict(mod, newdata=Train, type="response")
+        prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
+        pred <- as.factor(prediction)
+
+        forms <- c(forms, i)
+        formulas <- c(formulas, form)
+        acc <- c(acc, roc1$AUC)
+        aics <- c(aics, AIC(mod))
+        bics <- c(bics, BIC(mod))
+    }
+    df <- data.frame(formula=forms, aics=aics, bics=bics, acc=acc)
+    df <- df[order(-df$acc,df$aics),]
+    top_5[[k]] <- df
+    formula_list[[k]] <- formulas
+    write.csv(df,str_interp("./outputs/randomness/models_${k}.csv"))
+}
+```
+
+Let's improve on the best models returned by this random test:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+best_models <- list()
+for (i in 1:length(top_5)) {
+    best_models[[i]] <- top_5[[i]][1:5,]
+}
+best_models
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+forms <- model_formula(Train, 3, "response", with_int=FALSE, all=3)
+models <- modelling(Train, forms)
+formulas_with <- model_formula(Train, 4, "response", with_int=TRUE, all=4)
+formulas_without <- model_formula(Train, 4, "response", with_int=FALSE)
+models_with <- modelling(Train, formulas_with)
+models_without <- modelling(Train, formulas_without)
+```
+
+We remove *own_res* and *real_estate* as they represent the same (but opposite) as *rent* and *prop_unkn_none*.
+
+
+
+
+
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+plt <- function(col) {
+    print(col)
+    var <- credit %>% dplyr::select(col)
+    ggplot(credit, aes(y=var[,1], fill=response)) + geom_bar()
+}
+
+plt('co.applicant')
+plt('guarantor')
+```
+
+
+Checking 2-variable models and interactions:
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+cool_stuff <- na.omit(cool_stuff[cool_stuff$pvals < 0.02,])
+model_numbers <- as.numeric(rownames(cool_stuff))
+all_vars <- list()
+for (i in 1:length(model_numbers)) {
+    all_vars[[i]] <- all.vars(formula(models_with[[model_numbers[i]]])[-2])
+    all_vars[[i]] <- c(all_vars[[i]], paste(all_vars[[i]],collapse=":"))
+}
+vars <- c()
+for (i in 1:length(all_vars)) {
+    vars <- c(vars, all_vars[[i]][1], all_vars[[i]][3])
+}
+
+test_model <- glm(form=str_interp("response~(${paste(vars, collapse='+')})^2"), family=binomial, data=Train)
+staic <- stepAIC(test_model)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+scores <- read.csv('./outputs/scores_with.csv')
+scores_without <- read.csv('./outputs/scores_without.csv')
+p_value <- read.csv('./outputs/2_var_models_LRT.csv')
+scores = scores %>% rename("formulas_with"="formula")
+a = merge(p_value, scores, by = "formulas_with")
+
+scores_without = scores_without %>% rename("formulas_without"="formula")
+b = merge(a,scores_without, by =  "formulas_without")
+cool_stuff_2 <- b[b$accuracy.x>0.7,]
+model_numbers <- as.numeric(rownames(cool_stuff_2))
+all_vars <- list()
+for (i in 1:length(model_numbers)) {
+    all_vars[[i]] <- all.vars(formula(models_with[[model_numbers[i]]])[-2])
+    all_vars[[i]] <- c(all_vars[[i]], paste(all_vars[[i]],collapse=":"))
+}
+vars <- c()
+for (i in 1:length(all_vars)) {
+    vars <- c(vars, all_vars[[i]][1],all_vars[[i]][3])
+}
+vars <- unique(vars)
+
+test_model <- glm(form=str_interp("response~${paste(vars, collapse='+')}"), family=binomial, data=Train)
+staic <- stepAIC(test_model)
+
+roc1 <- Epi::ROC(form=formula(staic), data=Train, plot="ROC", lw=3, cex=1.5)
+cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
+
+prediction <- predict(staic, newdata=Test, type="response")
+prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
+pred <- as.factor(prediction)
+real_vals <- Test$response
+caret::confusionMatrix(pred, real_vals)
+
+credit_2 <- credit %>% dplyr::select(vars)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+df <- data.frame(vars=vars, accuracy=acc)
+df[order(df$accuracy),]
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+
+```
