@@ -814,7 +814,7 @@ When we conclude doing all this process, we finally get to two models with gam. 
 
 \tiny
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE, fig.show='hide'}
 fit_gam22= gam(response~new_car+used_car+install_rate+foreign+telephone+radio.tv+other_install:history_4+
                guarantor:history_4+ rent+other_install+prop_unkn_none+present_resident_2+guarantor+
                co.applicant+male_single+sav_acct_1+sav_acct_3+sav_acct_4+used_car+history_4+chk_acct_2+
@@ -827,7 +827,7 @@ summary(fit_gam22)
 plot(fit_gam22,shade=TRUE,seWithMean=TRUE,pch=19,1,cex=0.55)
 ```
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE, fig.show='hide'}
 fit_gam27= gam(response~new_car+used_car+install_rate+foreign+telephone+radio.tv+other_install:history_4+
                guarantor:history_4+ rent+other_install+prop_unkn_none+present_resident_2+guarantor+
                co.applicant+male_single+sav_acct_1+sav_acct_3+sav_acct_4+used_car+history_4+chk_acct_2+
@@ -836,11 +836,16 @@ fit_gam27= gam(response~new_car+used_car+install_rate+foreign+telephone+radio.tv
                s(amount,k=40,bs="ps",by=used_car)+s(amount,k=40,bs="ps",by=telephone)+
                s(amount,k=40,bs="ps",by=prop_unkn_none)+te(amount,age,k=c(10,10),bs=c("ps","ps"),m=2)+
                te(amount,duration,k=c(10,7),bs=c("ps","ps"),m=2),family=binomial,select=TRUE,data=creditTrain)
-summary(fit_gam27)
 plot(fit_gam27,shade=TRUE,seWithMean=TRUE,pch=19,1,cex=0.55)
 ```
 
+```{r, echo=TRUE, warning=FALSE, message=FALSE}
+summary(fit_gam27)
+```
+
 \normalsize
+
+We can see a significant improvement in the explained deviance, yielding a 49.7% deviance explained.
 
 First, we check with the anova function, and we see that the interaction present in fit_gam27 is significant at a confidence level of 99,9%. 
 
