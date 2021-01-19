@@ -1,7 +1,10 @@
 ---
-title: 'title'
-author: 'THE REGRESSORS'
-date: 'January 14th, 2021'
+title: 'Modelling Competition'
+author: 'The Regressors'
+date: 'January 18th, 2021'
+header-includes:
+    - \usepackage{booktabs}
+    - \usepackage{float} 
 output: 'pdf_document'
 ---
 
@@ -15,9 +18,7 @@ knitr::knit_engines$set(julia = JuliaCall::eng_juliacall)
 options(JULIA_HOME = '/home/dreth/julia/bin')
 ```
 
-Importing libraries:
-
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 library(dplyr)
 library(ggplot2)
 library(stringr)
@@ -38,18 +39,176 @@ library(caret)
 library(Epi)
 library(ROSE)
 library(ResourceSelection)
+library(mgcv)
+library(fastDummies)
+library(knitr)
+library(kableExtra)
 ```
+
+# Basic exploratory analysis
 
 Importing and manipulating the data:
 
+\tiny
+
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
+# import data
 credit <- read.csv('./data/credit.csv')
+
+# change names to lowercase
 names(credit) <- tolower(names(credit))
+
+# convert response into a factor
+credit$response <- as.factor(credit$response)
 ```
 
-Basic variable selection:
+\normalsize
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+## Visualizing our most important variables
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.height=6, fig.width=12}
+ggplot(credit, aes(history, fill=response)) + 
+    geom_bar() +
+    ggtitle("History") +
+    theme(text = element_text(size=15))
+```
+
+We can see the distribution of clients without good credit is not quite discernible for credit historyWe can see that clients that tend to have good credit history are more likely to have a good credit rating. And we see the higher the amount of credits the client has paid duly, the more likely the client will have good credit rating.
+
+However, delaying paying a past credit doesn't necessarily mean that the client will not have a good credit rating. In fact, the category with the most clients (credit history category 2) has a higher proportion of accounts without good credit rating than the general proportion of clients without good credit rating (30%).
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.height=6, fig.width=12}
+credit %>% ggplot(aes(x = duration)) +  
+    geom_density(aes(group = response, 
+                   colour = response, 
+                   fill = response),
+                   alpha = 0.2) + 
+    ggtitle("Duration") +
+    theme(text = element_text(size=15))
+```
+
+In this plot we can see that clients with good credit rating tend to pay credits sooner on average. Clients without a good credit rating follow a similar trend, where the majority of them will take credits for less time, however, they will also, on average, take longer to pay their credits due.
+
+There's about 5 peaks which diminish in size the larger the duration gets, where we see large accumulation of clients which both have and don't have a good credit rating. This highlights that the institution handing out these credits might have fixed timeframes for credit payments which clients are probably offered by default.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=12}
+credit %>% ggplot(aes(x = amount)) +  
+    geom_density(aes(group = response, 
+                   colour = response, 
+                   fill = response),
+                   alpha = 0.2) + 
+    ggtitle("Amount") +
+    theme(text = element_text(size=15))
+```
+
+For amounts we notice a trend, where clients with better credit rating also tend to ask for smaller amounts. The plot is strongly right-skewed for both good credit rating rating clients and the opposite. 
+
+It seems likely that clients with worse credit rating tend to ask for larger sums which they might, in the future, have more difficulty paying back. Although we might think that the opposite should be true, this ties well with the duration of credits, where clients with worse credit rating tended to ask for longer timeframes to pay their credits due. And it makes sense that larger amounts should take longer to pay (on average).
+
+It also seems likely that a good way to build a good credit rating could be to ask for smaller amounts, which should theoretically be easier to pay.
+
+&nbsp;
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.height=6, fig.width=12}
+credit %>% ggplot(aes(x = age)) +  
+  geom_density(aes(group = response, 
+                   colour = response, 
+                   fill = response),
+                   alpha = 0.2) + 
+    ggtitle("Age") +
+    theme(text = element_text(size=15))
+```
+
+In the following plot, we can see that the distributions for both groups (clients with and without good credit rating) are very similar, but in general, clients with good credit rating tend to be older than the clients with lesser credit rating. We also notice the plot is significantly right-skewed towards younger ages, perhaps because clients of younger age are incentivized to use financial services and probably might need more credits than those older clients (which tend to have less financial needs as their salaries might be higher).
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.height=6, fig.width=12}
+ggplot(credit, aes(y=education, fill=response)) + 
+    geom_bar() + 
+    ggtitle("Education") +
+    theme(text = element_text(size=15))
+```
+
+In the plot we can observe that, for both groups of education level, the proportion of being a good or bad client is very similar.
+
+### Testing 1-variable models (with GLM)
+
+We test 1-variable models to assess which variables (by themselves) have the highest predictive power:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide', fig.show='hide'}
+vars <- c("obs.","chk_acct","duration","history",
+          "new_car","used_car","furniture","radio.tv",
+          "education","retraining","amount","sav_acct",
+          "employment","install_rate","male_div","male_single",
+          "male_mar_or_wid","co.applicant","guarantor","present_resident",
+          "real_estate","prop_unkn_none","age","other_install",
+          "rent","own_res","num_credits","job",
+          "num_dependents","telephone","foreign","response")
+          
+vars_to_remove <- c("obs.")
+
+credit <- credit %>% dplyr::select(setdiff(vars,vars_to_remove))
+credit$response <- as.factor(credit$response)
+names(credit)
+
+set.seed(12)
+spl = caret::createDataPartition(credit$response, p = 0.8, list = FALSE)
+Train = credit[spl,]
+Test = credit[-spl,]
+Train$response <- as.factor(Train$response)
+Test$response <- as.factor(Test$response)
+
+cols <- names(credit)[1:(length(names(credit))-1)]
+vars <- c()
+acc <- c()
+for (i in 1:length(cols)) {
+    # formula and model
+    form <- stringr::str_interp("response~${cols[i]}")
+    mod <- glm(formula=form, family=binomial, data=Train)
+    form <- formula(mod)
+
+    # ROC curve and cutoff
+    roc1 <- Epi::ROC(form=form, data=Train, plot="ROC", lw=3, cex=1.5)
+    cutoff <- roc1$res$lr.eta[2]
+
+    # prediction
+    pred <- predict(mod, newdata=Train, type="response")
+    pred <- ifelse(pred > cutoff, 1, 0)
+    pred <- as.factor(pred)
+
+    # confusion matrix and accuracy
+    Accuracy <- caret::confusionMatrix(pred, Train$response)$overall[1]
+    
+    # adding variables to prediction
+    vars <- c(vars, cols[i])
+    acc <- c(acc, Accuracy)
+}
+df <- data.frame(vars=vars, accuracy=acc)
+df <- df[order(-df$accuracy),][1:10,]
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+knitr::kable(
+    df,
+    booktabs=TRUE,
+    caption="best models",
+    format="latex"
+) %>% kable_styling(latex_options="HOLD_position")
+```
+
+We can see that (individually), the best variables that we obtain are *history*, *duration*, *amount*, *age*, *co.applicant*, *education*, *male_div*, *employment*, *chk_acct* and *prop_unkn_none*.
+
+# Logistic regression (generalized linear model)
+
+## Basic variable selection
+
+We remove *obs.* given that it's just an index and we remove  *real_estate* and *own_res* as they are essentially equivalent to *prop_unkn_none* and *rent*.
+
+We are left with:
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 vars <- c("obs.","chk_acct","duration","history",
           "new_car","used_car","furniture","radio.tv",
           "education","retraining","amount","sav_acct",
@@ -66,7 +225,13 @@ credit$response <- as.factor(credit$response)
 names(credit)
 ```
 
-Given that *amount* is NOT normally distributed, we take the log of it: tits
+\normalsize
+
+## Normalizing variables
+
+Given that *amount*, *age* and *duration* are NOT normally distributed, we take their log (we also sum 1 to avoid errors with zeros):
+
+\tiny
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 credit$amount <- log(credit$amount + 1)
@@ -74,7 +239,13 @@ credit$age <- log(credit$age + 1)
 credit$duration <- log(credit$duration + 1)
 ```
 
-TTS:
+\normalsize
+
+## Train and test split
+
+We use a randomly selected seed (12) and perform a train and test split with 80% train and 20% test values. We also convert the response variable of each subset of data into a factor.
+
+\tiny
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 set.seed(12)
@@ -85,9 +256,19 @@ Train$response <- as.factor(Train$response)
 Test$response <- as.factor(Test$response)
 ```
 
-We define a function to obtain the formula of all models with and without a chosen amount of interactions (2-way, 3-way, etc):
+\normalsize
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+# Functions to aid the modelling and variable selection process
+
+**Code for the functions is omitted due to how long they are, to see the code, view Rmd file**
+
+## Formula creation function
+
+We defined a function to obtain the formula of all models with and without a chosen amount of interactions (2-way, 3-way, etc). The function generates all combinations of variables of a selected size (2 vars, 3 vars, etc) and puts them into a formula neatly, including or excluding their interactions.
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 model_formula <- function(data, combs, target, with_int=TRUE, all=FALSE) {
     formulas <- c()
     cols <- names(data)[1:(length(names(data))-1)]
@@ -113,9 +294,15 @@ model_formula <- function(data, combs, target, with_int=TRUE, all=FALSE) {
 }
 ```
 
-Modelling function:
+\normalsize
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+## Modelling function
+
+We create a function that runs all the models using a chosen dataset, utilizing a list of formulas created by the previously defined function.
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 modelling <- function(data, formulas) {
     models <- list()
     for (i in 1:length(formulas)) {
@@ -125,9 +312,17 @@ modelling <- function(data, formulas) {
 }
 ```
 
-LRT for models with and without interactions:
+\normalsize
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+## Function to testing models with and without interactions
+
+We define a function to perform LRT for models with and without interactions and we check the significance of such interactions. If the p-value displayed in the dataframe is above a certain threshold we deem those interactions less useful.
+
+We also calculate the AIC of each model (with and without interactions) to check if the interaction is not just significant but also improves the model to an extent.
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 test <- function(formulas_with, formulas_without, models_with_int, models_without_int) {
     p_vals <- c()
     aic_with <- c()
@@ -141,16 +336,26 @@ test <- function(formulas_with, formulas_without, models_with_int, models_withou
 }
 ```
 
-Scoring function:
+\normalsize
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+## Scoring function
+
+We define a function that will score the models using several different metrics:
+
+- ROC Area under curve (using training set)
+- ROC sensitivity
+- ROC specificity
+- Accuracy from a confusion matrix
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 scoring <- function(data, testing, models, formulas) {
     accuracy <- c()
     roc_cutoff <- c()
     roc_auc <- c()
     roc_sensitivity <- c()
     roc_specificity <- c()
-    # hoslem <- c()
     for (i in 1:length(models)) {
         # ROC curve
         roc1 <- Epi::ROC(form=formula(models[[i]]), data=data, plot="ROC", lw=3, cex=1.5)
@@ -170,10 +375,6 @@ scoring <- function(data, testing, models, formulas) {
         # target score 
         real_vals <- as.factor(testing$response)
 
-        # hosmer lemeshow goodness of fit test
-        # hltest <- hoslem.test(real_vals, prediction)$p.value
-        # hoslem <- c(hoslem, hltest)
-
         # confusion matrix score
         accuracy <- c(accuracy,caret::confusionMatrix(pred, real_vals)$overall[1])
     }
@@ -186,65 +387,35 @@ scoring <- function(data, testing, models, formulas) {
 }
 ```
 
-### We run a model with *all the variables*
+\normalsize
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+# Model selection process
+
+## Running a model with all the variables
+
+We run a model with all the variables and no interactions, therefore we can roughly see how the model is standing before any significant variable selection.
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.show='hide'}
 mod <- glm(formula=response~., family=binomial, data=Train)
 roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
 cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
 prediction <- predict(mod, newdata=Test, type="response")
 prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
 pred <- as.factor(prediction)
+```
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 caret::confusionMatrix(pred, Test$response)
 ```
 
-Using all our variables we reach an accuracy of 0.785, which so far is decent, but this can improve. 
+\normalsize
 
-### Testing 1-variable models
+Using all our variables we reach an accuracy of 0.78, which as a starting point is decent, but this can improve.
 
-1-variable models:
+## Testing models with and without variables to check their significance
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
-cols <- names(credit)[1:(length(names(credit))-1)]
-vars <- c()
-acc <- c()
-for (i in 1:length(cols)) {
-    # formula and model
-    form <- stringr::str_interp("response~${cols[i]}")
-    mod <- glm(formula=form, family=binomial, data=Train)
-    form <- formula(mod)
-
-    # ROC curve and cutoff
-    roc1 <- Epi::ROC(form=form, data=Train, plot="ROC", lw=3, cex=1.5)
-    cutoff <- roc1$res$lr.eta[2]
-
-    # prediction
-    pred <- predict(mod, newdata=Test, type="response")
-    pred <- ifelse(pred > cutoff, 1, 0)
-    pred <- as.factor(pred)
-
-    # confusion matrix and accuracy
-    Accuracy <- caret::confusionMatrix(pred, Test$response)$overall[1]
-    
-    # adding variables to prediction
-    vars <- c(vars, cols[i])
-    acc <- c(acc, Accuracy)
-}
-df <- data.frame(vars=vars, accuracy=acc)
-df <- df[order(-df$accuracy),][1:10,]
-knitr::kable(
-    df,
-    booktabs=TRUE,
-    longtable=TRUE,
-    caption="best models"
-)
-```
-
-We can see that (individually), the best variables that we obtain are *chk_acct*, *duration*, *amount*, *age*, *history*, *education*, *co.applicant*, *retraining*, *other_install* and *prop_unkn_none*.
-
-### Testing models with and without variables to check significance
-
-Here we perform LRT to check the significance of individual variables (lower is better):
+Here we perform LRT to check the significance of individual variables. We assess whether the p-value of the test shows significance of each model compared to the one without a specific variable (looping through them):
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 sig_scores <- c()
@@ -267,14 +438,14 @@ for (i in 1:length(cols)) {
 }
 df <- data.frame(vars=vars,scores=sig_scores,aic=aics)
 knitr::kable(
-    df[order(-df$scores),],
+    df[order(-df$scores),][1:10,],
     booktabs=TRUE,
-    longtable=TRUE,
-    caption="best models"
-)
+    caption="best models",
+    format="latex"
+) %>% kable_styling(latex_options="HOLD_position")
 ```
 
-This allows us to remove *furniture* and *male_mar_or_wid* which seem to not be signficant.
+This allows us to remove *furniture* and *male_mar_or_wid* which seem to not be signficant given their extremely high p-value, we keep the rest of the variables regardless of their result as they are not as notoriously high as *furniture* and *male_mar_or_wid* and their interactions with other variables might make them useful.
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
 vars <- c("obs.","chk_acct","duration","history",
@@ -293,44 +464,52 @@ credit$response <- as.factor(credit$response)
 names(credit)
 ```
 
-### Testing 2-variable models with and without interactions
+## Testing 2-variable models with and without interactions
 
-We create models with all the combinations of 2 variables and then we perform LRT for models with and without interactions. Then we select models with an LRT p-value under 0.005, in order to keep the most important interactions.
+We create models with all the combinations of 2 variables and then we perform LRT for models with and without interactions between their variables. Then we select models with an LRT p-value under 0.005, in order to keep the most important interactions.
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+\footnotesize
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
 formulas_with <- model_formula(credit, 2, "response", with_int=TRUE, all=2)
 formulas_without <- model_formula(credit, 2, "response", with_int=FALSE)
 models_with <- modelling(Train, formulas_with)
 models_without <- modelling(Train, formulas_without)
 ```
 
+\normalsize
+
 We run the tests:
+
+\footnotesize
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 two_var_combs <- test(formulas_with, formulas_without, models_with, models_without)
 ```
 
-We remove NAs, given that these interactions' product is 0 for all values, therefore, the LRT returns a p-value of 1 (meaning there's no difference between the models).
+\normalsize
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+We remove NAs, given that these interactions' product is 0 for all values, the LRT returns a p-value of 1 (meaning there's no difference between the models).
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 two_var_combs <- na.omit(two_var_combs[order(-two_var_combs$pvals),])
 best_2_vars <- two_var_combs[two_var_combs$pvals < 0.005,]
 ```
 
 We present the table showing the model formulas and the p-values:
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 knitr::kable(
     best_2_vars,
     booktabs=TRUE,
-    longtable=TRUE,
-    caption="best models"
-)
+    caption="best models",
+    format="latex"
+) %>% kable_styling(latex_options="scale_down") %>% kable_styling(latex_options="HOLD_position")
 ```
 
-### Testing a model using the best 2-way interactions
+## Testing a model using the best 2-way interactions
 
-We also use all the variables as we did previously, however, we include the interactions selected:
+We test a model using all the previously ran variables (all the variables in the dataset) but we include the interactions selected as most meaningful:
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 model_numbers <- as.numeric(rownames(best_2_vars))
@@ -339,17 +518,14 @@ for (i in 1:length(model_numbers)) {
     all_vars[[i]] <- all.vars(formula(models_with[[model_numbers[i]]])[-2])
     all_vars[[i]] <- c(all_vars[[i]], paste(all_vars[[i]],collapse=":"))
 }
-all_vars
-
 two_vars <- c()
 for (i in 1:length(all_vars)) {
     two_vars <- c(two_vars, all_vars[[i]][1],all_vars[[i]][3])
 }
 two_vars <- unique(two_vars)
-two_vars
 ```
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide', fig.show='hide'}
 vars_selected <- unique(c(two_vars, names(credit)))
 mod <- glm(formula=str_interp("response~${paste(vars_selected, collapse='+')}"), family=binomial, data=Train)
 roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
@@ -357,48 +533,68 @@ cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
 prediction <- predict(mod, newdata=Test, type="response")
 prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
 pred <- as.factor(prediction)
+```
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 caret::confusionMatrix(pred, Test$response)
 ```
 
-The model didn't improve much given that we have essentially the same accuracy, but we have higher sensitivity, therefore we keep testing.
+\normalsize
 
-### Testing 3-variable models with and without interactions
+Looking at the confusion matrix the model didn't improve much given that we have essentially the same accuracy, but we have higher sensitivity, therefore we continue the process.
+
+## Testing 3-variable models with and without interactions
 
 We create models with all the combinations of 3 variables and then we perform LRT for models with and without interactions. Then we select models with an LRT p-value under 0.0005, in order to keep the most important interactions.
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+\footnotesize
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide', fig.show='hide'}
 formulas_with <- model_formula(credit, 3, "response", with_int=TRUE, all=3)
 formulas_without <- model_formula(credit, 3, "response", with_int=FALSE)
 models_with <- modelling(Train, formulas_with)
 models_without <- modelling(Train, formulas_without)
 ```
 
+\normalsize
+
 We run the tests:
+
+\footnotesize
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 three_var_combs <- test(formulas_with, formulas_without, models_with, models_without)
 ```
 
+\normalsize
+
 We remove NAs, given that these interactions' product is 0 for all values, therefore, the LRT returns a p-value of 1 (meaning there's no difference between the models).
+
+\footnotesize
 
 ```{r, echo=TRUE, warning=FALSE, message=FALSE}
 three_var_combs <- na.omit(three_var_combs[order(-three_var_combs$pvals),])
 best_3_vars <- three_var_combs[three_var_combs$pvals < 0.0005,]
 ```
 
+\normalsize
+
 We present the table showing the model formulas and the p-values:
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 knitr::kable(
     best_3_vars,
+    caption="best models",
     booktabs=TRUE,
-    longtable=TRUE,
-    caption="best models"
-)
+    format="latex"
+) %>% kable_styling(latex_options="scale_down") %>% kable_styling(latex_options="HOLD_position")
 ```
 
+We also see that, as with 2-variable interactions, the fact that an interaction is meaningful also improves the AIC of a model.
 
-### Testing a model using the best 3-way and 2-way interactions
+## Testing a model using the best 3-way and 2-way interactions
 
 We also use all the variables as we did previously, however, we include the interactions selected:
 
@@ -409,17 +605,14 @@ for (i in 1:length(model_numbers)) {
     all_vars[[i]] <- all.vars(formula(models_with[[model_numbers[i]]])[-2])
     all_vars[[i]] <- c(all_vars[[i]], paste(all_vars[[i]],collapse=":"))
 }
-all_vars
-
 three_vars <- c()
 for (i in 1:length(all_vars)) {
     three_vars <- c(three_vars, all_vars[[i]][1],all_vars[[i]][4])
 }
 three_vars <- unique(three_vars)
-three_vars
 ```
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide', fig.show='hide'}
 vars_selected <- unique(c(three_vars, names(credit), two_vars))
 mod <- glm(formula=str_interp("response~${paste(vars_selected, collapse='+')}"), family=binomial, data=Train)
 roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
@@ -427,20 +620,477 @@ cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
 prediction <- predict(mod, newdata=Test, type="response")
 prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
 pred <- as.factor(prediction)
+```
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 caret::confusionMatrix(pred, Test$response)
 ```
+
+\normalsize
+
+We see the model improves its accuracy by about 1%, this is an acceptable increase, however, we can keep trying to improve it.
 
 We remove the variables *radio.tv:retraining:age* and *used_car:amount:education* given that they have NA coefficients:
 
-```{r, echo=TRUE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide', fig.show='hide'}
+credit <- read.csv('./data/credit.csv')
+names(credit) <- tolower(names(credit))
+
+vars <- c("obs.","chk_acct","duration","history",
+          "new_car","used_car","furniture","radio.tv",
+          "education","retraining","amount","sav_acct",
+          "employment","install_rate","male_div","male_single",
+          "male_mar_or_wid","co.applicant","guarantor","present_resident",
+          "real_estate","prop_unkn_none","age","other_install",
+          "rent","own_res","num_credits","job",
+          "num_dependents","telephone","foreign","response")
+          
+vars_to_remove <- c("own_res", "obs.", "real_estate", "furniture", "male_mar_or_wid")
+
+credit <- credit %>% dplyr::select(setdiff(vars,vars_to_remove))
+credit$response <- as.factor(credit$response)
+
+credit$amount <- log(credit$amount + 1)
+credit$age <- log(credit$age + 1)
+credit$duration <- log(credit$duration + 1)
+
+set.seed(12)
+spl = caret::createDataPartition(credit$response, p = 0.8, list = FALSE)
+Train = credit[spl,]
+Test = credit[-spl,]
+Train$response <- as.factor(Train$response)
+Test$response <- as.factor(Test$response)
+
 vars_selected <- unique(c(three_vars, names(credit), two_vars))
-vars_selected <- vars_selected[vars_selected != "used_car:education:amount" & vars_selected != "radio.tv:retraining:age"]
+vars_selected <- vars_selected[vars_selected != "used_car:education:amount" & vars_selected != "radio.tv:retraining:age" & vars_selected != "foreign" & vars_selected != "male_single:foreign" & vars_selected != "job:foreign"]
+
 mod <- glm(formula=str_interp("response~${paste(vars_selected, collapse='+')}"), family=binomial, data=Train)
+
+mod <- stepAIC(mod)
 roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
 cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
 prediction <- predict(mod, newdata=Test, type="response")
 prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
 pred <- as.factor(prediction)
+```
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 caret::confusionMatrix(pred, Test$response)
 ```
 
+\normalsize
+
+We see our accuracy has increased to about 81.5% after optimizing using stepAIC and removing the variables that have a very high standard error (*used_car:education:amount*, *radio.tv:retraining:age*, *foreign*, *male_single:foreign*, *job:foreign*)
+
+The final model we have chosen for our GLM model section is the model that uses the following formula:
+
+response ~ used_car + radio.tv + chk_acct + history + duration + 
+           new_car + retraining + amount + sav_acct + employment + guarantor + 
+           prop_unkn_none + age + other_install + rent + telephone + 
+           employment:prop_unkn_none + radio.tv:employment + history:other_install + 
+           duration:sav_acct + amount:telephone + retraining:age + used_car:amount + 
+           chk_acct:retraining:other_install + duration:amount:telephone
+
+## Summary of our final GLM 
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+summary(mod)
+```
+
+\normalsize
+
+1. Duration: As the exponential of the coeffient for the variable is less than 1, it means that the higher the value of the duration, the higher the probability of being a bad client. 
+
+2. History: As the coefficient for the variable history is positive, we can see the odds ratio will be greater than 1. Which means that the more the value of history, the higher the probability of being a good client. 
+
+3. Age: The coefficient is positive, so the odds ratio will be greater than 1, which means that the older the client is, the better the client is, and that corresponds to our exploratory analysis.
+
+# Generalized additive model penalized splines
+
+We import and manipulate the data, create dummy variables for the categorical variables and we perform a train-test split for 80% train and 20% test.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+credit <- read.csv('./data/credit.csv')
+names(credit) <- tolower(names(credit))
+
+# converting vars to factors
+n=ncol(credit)
+for(i in 1:n){
+  if((i!=3)&(i!=11)&(i!=23)){
+      credit[,i]=as.factor(credit[,i])
+}}
+
+# train test split
+set.seed(12)
+spl = createDataPartition(credit$response, p = 0.8, list = FALSE)   
+creditTrain = credit[spl,]
+creditTest = credit[-spl,]
+
+# creating dummy variables for categorical variables
+creditTest=dummy_cols(creditTest, select_columns = c('present_resident','install_rate','sav_acct','history','chk_acct'))
+creditTest$sav_acct_1=as.factor(creditTest$sav_acct_1)
+creditTest$sav_acct_3=as.factor(creditTest$sav_acct_3)
+creditTest$sav_acct_4=as.factor(creditTest$sav_acct_4)
+creditTest$history_4=as.factor(creditTest$history_4)
+creditTest$chk_acct_2=as.factor(creditTest$chk_acct_2)
+creditTest$chk_acct_3=as.factor(creditTest$chk_acct_3)
+creditTest$present_resident_2=as.factor(creditTest$present_resident_2)
+
+
+creditTrain=dummy_cols(creditTrain, select_columns = c('present_resident','install_rate','sav_acct','history','chk_acct'))
+creditTrain$sav_acct_1=as.factor(creditTrain$sav_acct_1)
+creditTrain$sav_acct_3=as.factor(creditTrain$sav_acct_3)
+creditTrain$sav_acct_4=as.factor(creditTrain$sav_acct_4)
+creditTrain$history_4=as.factor(creditTrain$history_4)
+creditTrain$chk_acct_2=as.factor(creditTrain$chk_acct_2)
+creditTrain$chk_acct_3=as.factor(creditTrain$chk_acct_3)
+creditTrain$present_resident_2=as.factor(creditTrain$present_resident_2)
+```
+
+In this part of the work, we will use a generalized additive model (with penalized splines) in order to estimate, and predict a classification for the costumers of the bank. We believe this is a good idea, as by doing this we can relaxate the linearity assumption between the response variable and some of our predictors. 
+We first started by fitting a gam model with only three variables (the three continuous) and checked different criteria. As most of our categories are categorical, we first explore a model with the continuous one to check their relevance in the model.
+
+In general, our procedure is based on the following criteria. First, we check the coefficients estimation in the model and see if it is significant (and to what level of confidence it is). 
+
+Then we start adding variables and interactions and compare the following: Akaike value (we keep the one with a lower value of akaike, as it penalazes by degrees of freedom), we plot a ROC curve and check the AUC (that is the predictive power that our model has, and we keep on working with the model that has a higher level of AUC: that is, the ROC is closer to the sides of the square of area equal to 1), we build a confusion matrix with both training and testing set and check how many of each of the errors our model produces when predicting and what percentage of errors taking into account all the predictions, and finally we test it with Anova (LRT), using a Chisq test to see if the extra term is significant or we can omit it. We also check the explained deviance of each model. When evaluating the change in all this criteria, we decide if we continue trying with the same model or change it for another one a bit more complex. And so on.
+
+\tiny
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE, fig.height=4, fig.width=10}
+fit_gam=logit1 <- gam(response~s(age)+s(duration)+s(amount),family=binomial,select=TRUE,data=creditTrain)
+summary(fit_gam)
+plot(fit_gam,shade=TRUE,seWithMean=TRUE,pch=19,1,cex=0.55)
+```
+
+\normalsize
+
+By looking at the first model, we can tell the both "duration" and "amount" have very small p-values and thus, are significant to a 99,9% confidence level. The three of them do not seem to be linear. We can see very well in the plots that the dots are creating two very differentiate groups. Nevertheless, our three continuous variable model is not being able to capture this effect. We obviously have to check interactions between some continuous variable and some categorical. 
+To do so, we will study the relevance of our categorical variables in a model, and asses each of their relevance to then study possible interactions. This way, our model starts becoming more complex, but also much more accurate.
+
+Second, we run a model with all the variables of the dataset. In the results, we see that variable "age" becomes an irrelevant variable (even when using psplines and hiperparameter tuning for "K"), and subsesive analysis confirms that we can take it out from our models. 
+After losing this variable and using hiperparameter tuning in the other two non linear predictors, we check the categorical variables and we got rid of some more variables that are not useful to explain the credit response. We use only the p-values in order to have a broad or provisional understanding of the variables we for sure want to have in the model. This does not mean (by ane means) that we will forget about the other variables, as we will check their inclusion later on the assigment.
+
+\tiny
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=TRUE, fig.show='hide'}
+fit_gam2<- gam(response~education+chk_acct+history+new_car+used_car+furniture+radio.tv+
+               retraining+sav_acct+employment+install_rate+male_div+male_single+male_mar_or_wid+
+               co.applicant+guarantor+present_resident+real_estate+prop_unkn_none+other_install+
+               rent+own_res+job+num_credits+job+num_dependents+telephone+foreign+s(duration,k=40,bs="ps")+
+               s(amount,k=40,bs="ps"),family=binomial,select=TRUE,data=creditTrain)
+summary(fit_gam2)
+plot(fit_gam2,shade=TRUE,seWithMean=TRUE,pch=19,1,cex=0.55)
+```
+
+\normalsize
+
+We took out the following variables to start trying models: *education*, *used_car*, *furniture*, *radio.tv*, *retraining*, *employment*, *male_div*, *male_mar_or_wid*, *job*, *num_credits*, *num_dependents*, *telephone* and *foreign*.     
+
+Now, we can see that there are some varibles that contain some factors that are of special interest in our analysis, while there are others that don´t seem to give us a lot of information. In these cases, we produced dummy variables, transforming catgorical (ordinal) variables into binary ones for each of the levels.For example: the variable "history" accounts for the credit history ("0" for not having taken any credits before, "1" for having paid all credit duly at the bank, "2" for existing credits paid duly till now, "3" for having had a delay in the payback in the past and "4" account for a critical account). There seems to be no significance for the level 1 of the categorical variable, but it is very important to know if the account is critical or not (level 4). In order to capture this effect and make right use of the provided information, we produce a binary variable for each level (for example, a variable will take value "0" if it is not a critical account and "1" if it is a critical account), and so on. Then we test for significance. 
+
+After doing this, we try and fit a model only with the levels that looked significant.
+Once this is done, we start trying interactions, first between continuous variables. When doing this, we see that the interaction between amount and duration is very significant, but we adjust the k parameter to (10,7) because taking a higher k we only slow down the process (increase the computational cost) but our model does not fir better.
+We take this model as a benchmark. We get with it 24.6% explained deviance, and Akaike value equal to 661.49. When predicting, our Area under the Curve (in the ROC curve) is 0.8104762 and when building our own confusion matrix, we see that 77% of the predictions are right, while 23% are wrong classifications. Please note, that we find in each case, the optimal threshold that optimizes our confusion matrix. As our anove function tells us that an extra interaction is significant (comparing a reduced and full model) then we keep the interaction. 
+
+So, from now on, we do this analysis every time: comparing every criteria, and only of they coincide we keep the new term or do not do it. In case the criteria does not tell us a unique answer (for example, with an extra interaction the prediction gets more accuracy but the AIC gets bigger), we discuss and take into account the meaning of the variables we are treating. And then decide as a team if we keep it, or not.
+
+In order to improve this model (always optimizing the parameters), we start adding interactions between our most significant categorical variables and our continuous variables. In other words, we start checking how our model behaves when we add an interaction between "amount" and "prop_unkn_noun" (meaning that the applicant owns no property). And we do this with all the combinations, until we find the one that best fits our data. Then, we also try adding interactions between categorical variables (first the ones that seem to be very significant to explain our estimation) and then the ones that have a higher p-value.
+
+Once we compared each model doing that, we give another step and start trying with other interactions between categorical variables. To do this, we used the interactions that were more significant in the logistic regression analysis. In other words, we took the interactions that looked significant or interesting in the linear model, and brought them to this gam model to check if they were relevant here too. 
+
+At some point, there are some variables we are not including that call our attention. For example, the test told us that the variable "employment" is not significant in any model. As we consider that it should be relevant the current employability situation of the credit consumer, we try and include it as a dummy variable: employed or unemployed. Even when doing this, this variable seems not to be relevant in our estimation.
+
+When we conclude doing all this process, we finally get to two models with gam. One is fit_gam22 and another one called fit_gam27. Let´s discuse the different criteria to chose between one of them. The difference between these two models, is an interaction (that fit_gam27 has and the other one does not have) between "amount" and "history".
+
+\tiny
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+fit_gam22= gam(response~new_car+used_car+install_rate+foreign+telephone+radio.tv+other_install:history_4+
+               guarantor:history_4+ rent+other_install+prop_unkn_none+present_resident_2+guarantor+
+               co.applicant+male_single+sav_acct_1+sav_acct_3+sav_acct_4+used_car+history_4+chk_acct_2+
+               chk_acct_3+prop_unkn_none:chk_acct_3+prop_unkn_none:history_4+education:own_res+
+               co.applicant:chk_acct+ s(duration,k=40,bs="ps",by=rent)+s(amount,k=40,bs="ps",by=used_car)+
+               s(amount,k=40,bs="ps",by=telephone) +s(amount,k=40,bs="ps",by=prop_unkn_none)+
+               te(amount,age,k=c(10,10),bs=c("ps","ps"),m=2)+te(amount,duration,k=c(10,7),bs=c("ps","ps"),m=2),
+               family=binomial,select=TRUE,data=creditTrain)
+summary(fit_gam22)
+plot(fit_gam22,shade=TRUE,seWithMean=TRUE,pch=19,1,cex=0.55)
+```
+
+```{r, echo=TRUE, warning=FALSE, message=FALSE, eval=FALSE}
+fit_gam27= gam(response~new_car+used_car+install_rate+foreign+telephone+radio.tv+other_install:history_4+
+               guarantor:history_4+ rent+other_install+prop_unkn_none+present_resident_2+guarantor+
+               co.applicant+male_single+sav_acct_1+sav_acct_3+sav_acct_4+used_car+history_4+chk_acct_2+
+               chk_acct_3+prop_unkn_none:chk_acct_3+prop_unkn_none:history_4+education:own_res+
+               s(amount,k=40,bs="ps",by=history)+co.applicant:chk_acct+s(duration,k=40,bs="ps",by=rent)+
+               s(amount,k=40,bs="ps",by=used_car)+s(amount,k=40,bs="ps",by=telephone)+
+               s(amount,k=40,bs="ps",by=prop_unkn_none)+te(amount,age,k=c(10,10),bs=c("ps","ps"),m=2)+
+               te(amount,duration,k=c(10,7),bs=c("ps","ps"),m=2),family=binomial,select=TRUE,data=creditTrain)
+summary(fit_gam27)
+plot(fit_gam27,shade=TRUE,seWithMean=TRUE,pch=19,1,cex=0.55)
+```
+
+\normalsize
+
+First, we check with the anova function, and we see that the interaction present in fit_gam27 is significant at a confidence level of 99,9%. 
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.show='hide'}
+anova(fit_gam22,fit_gam27,test="Chisq")
+```
+
+\normalsize
+
+Second, let´s check both Akaike values.
+
+\small
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+fit_gam22$aic
+fit_gam27$aic
+```
+
+\normalsize
+
+As we can see our fit_gam27 has a lower AIC value, which makes it more attractive.
+
+Now, let´s check our ROC curve and the AUC. This is to determine the accuracy of predictions. We will do this, both in our training and testing set.
+
+First, let´s check the ROC for our fit_gam22 (first training set and then in the testing set).
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=FALSE, fig.show='hide'}
+pred_model <- predict(fit_gam22,creditTrain,type="response")
+colAUC(pred_model, creditTrain[["response"]], plotROC = TRUE)
+
+pred_model_test <- predict(fit_gam22,creditTest,type="response")
+colAUC(pred_model_test, creditTest[["response"]], plotROC = TRUE)
+```
+
+\normalsize
+
+As we can see, our fit_gam22 has an AUC of 0.91 when predicting on our training set, and then an AUC of 0.804 when predicting in our testing set.
+Let´s now, check these measures for the fit_gam27.
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.show='hide'}
+pred_model <- predict(fit_gam27,creditTrain,type="response")
+colAUC(pred_model, creditTrain[["response"]], plotROC = TRUE)
+
+pred_model_test <- predict(fit_gam27,creditTest,type="response")
+colAUC(pred_model_test, creditTest[["response"]], plotROC = TRUE)
+```
+
+\normalsize
+
+As we can see, the AUC for fit_gam27 when prediciting over the training set is equal to 0.923, and a more realistic AUC of 0.83 when prediciting over the testing set.
+Between both models, our fit_gam27 has more accuracy power than fit_gam22.
+
+Let´s now build four confusion matrixes for both training and testing set, and fit_gam22 and fit_gam27. With this, we can see the distribution of our errors, not only the error rate.
+
+First, for fit_gam22:
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+pred_model <- predict(fit_gam22,creditTrain, type="response")
+tab <- table(pred_model > 0.5,creditTrain$response)
+tab
+well_pred_train <- sum(diag(tab))/sum(tab)*100
+error_rate_train <- 100-((sum(diag(tab))/sum(tab)*100))
+sensitivity_train <- tab[2,2]/(tab[2,2]+tab[1,2])
+specificity_train <- tab[1,1]/(tab[1,1]+tab[2,1])
+
+well_pred_train
+error_rate_train
+sensitivity_train
+specificity_train
+
+
+pred_model <- predict(fit_gam22,creditTest, type="response")
+tab <- table(pred_model > 0.5,creditTest$response)
+tab
+well_pred_test <- sum(diag(tab))/sum(tab)*100
+error_rate_test <- 100-((sum(diag(tab))/sum(tab)*100))
+sensitivity_test <- tab[2,2]/(tab[2,2]+tab[1,2])
+specificity_test <- tab[1,1]/(tab[1,1]+tab[2,1])
+
+well_pred_test
+error_rate_test
+sensitivity_test
+specificity_test
+```
+
+\normalsize
+
+Now, for our fit_gam27:
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+pred_model <- predict(fit_gam27,creditTrain, type="response")
+tab <- table(pred_model > 0.5,creditTrain$response)
+tab
+well_pred_train <- sum(diag(tab))/sum(tab)*100
+error_rate_train <- 100-((sum(diag(tab))/sum(tab)*100))
+sensitivity_train <- tab[2,2]/(tab[2,2]+tab[1,2])
+specificity_train <- tab[1,1]/(tab[1,1]+tab[2,1])
+
+well_pred_train
+error_rate_train
+sensitivity_train
+specificity_train
+
+
+pred_model <- predict(fit_gam27,creditTest, type="response")
+tab <- table(pred_model > 0.5,creditTest$response)
+tab
+well_pred_test <- sum(diag(tab))/sum(tab)*100
+error_rate_test <- 100-((sum(diag(tab))/sum(tab)*100))
+sensitivity_test <- tab[2,2]/(tab[2,2]+tab[1,2])
+specificity_test <- tab[1,1]/(tab[1,1]+tab[2,1])
+
+well_pred_test
+error_rate_test
+sensitivity_test
+specificity_test
+```
+
+\normalsize
+
+As we can see, when predicting over the training set, our fit_gam27 predicts right almost 86.5% of times (either good or bad credit score). In other words, it predicts making mistakes almost 13,5% of the costumers. In this model, our sensitivity is 0.926 and specificity is 0.717. While, our fit_gam22 predicts well almost 85.5% of the cases (that is makes mistakes in predictions almost 14.5% of the cases). Here, our sensitivity is 0.92 and specificity is 0.7.
+
+When looking at the testing set, we get that our fit_gam22 predicts right on 83% of times (while makes mistakes on 17% of the costumers). Its sensitivity is 0.92 and specificity 0.6. In our fit_gam27 we predict 81% of the cases right (19% making mistakes). Our sensitivity is 0.89 and specificity is at 0.62.
+
+All in all, taking into account every consideration, we will use our fit_gam27 to do predict if a future costumer will be good or bad costumer.
+
+### Variable Importance
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+pred_model <- predict(fit_gam27,creditTrain, type="terms")[1,]
+pred_model
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+pred_model <- predict(fit_gam27,creditTrain, type="terms")[1:5,]
+pred_model
+```
+
+\normalsize
+
+In order to asses what are the most relevant variables in our model, we will predict 20 points from our testing set, and check the influence af all the terms in each prediction. This way, we can see to what extent each variable contributes to predict a new costumer (either good or bad). We do this in terms of probabilities, so if a variable adds 0.5 of probability toa prediction, it means it does not really add any useful information to that point of prediction. In general, we can see that there are some variables that always (or almost always) take different values to 0.5 in the predictions. This way, we can say that the most important variables in our model to predict whether a costumer will be good or bad, will be: inst_rate (accounts for the % of disposable income), male_single, sav_acct (accounts for the average balance in savings account), duration (duration of the credit in months) and amount (amount of the credit).
+
+Others, that are important, but not as important as the ones previously mentiones are: radio.tv (if the credit is destined to buying a tv or a radio), telephone (the purpose of the credit is to buy a phone), new_car (if the costumer wants to use the credit for a new car), present_residence (amount of years in the present residence), chk_acct (accounts for the checking account status, and _3 is for the one who does not have a checking account).
+
+To sum up, in general a good costumer would be someone who asks a credit for to buy a radio or a tv, or a phone, who has a guarantor, who is single with a high avarage balance in savings account, single and male. For a bad costumer, we could be facing someone who is asking a credit to buy a new car, who rents (residence), who has a high installment rate as % of disposable income, who owns no property, who has not been a resident for more than 2 years and with no achecking account.
+
+# Final model
+
+We have chosen a mix of GAM and GLM for our model. We have chosen a final model where we mix both GAM and GLM. We choose based on the following table:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+table1 <- data.frame(gam_result=c(1,1,0,0), glm_result=c(1,0,1,0), final_choice=c(1,1,1,0))
+knitr::kable(
+    table1,
+    booktabs=TRUE,
+    caption="best models",
+    format="latex"
+) %>% kable_styling(latex_options="HOLD_position")
+```
+
+And we get the following confusion matrix for it (in sample prediction):
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=TRUE, fig.show='hide'}
+# GLM
+roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
+cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
+glm_pred <- predict(mod, newdata=Train, type="response")
+glm_pred_bin <- ifelse(glm_pred > roc1$res$lr.eta[cutoff], 1, 0)
+glm_pred_bin <- as.factor(glm_pred_bin)
+
+# GAM
+gam_pred <- predict(fit_gam27, newdata=creditTrain, type="response")
+gam_pred_bin <- ifelse(gam_pred > 0.45, 1, 0)
+gam_pred_bin <- as.factor(gam_pred_bin)
+
+predict_vote <- function(gam_pred, glm_pred) {
+    result_pred <- rep(0,length(gam_pred))
+    for (i in 1:length(gam_pred)) {
+        if (gam_pred[i] == 1 & glm_pred[i] == 1) {
+            result_pred[i] <- 1
+        } else if (gam_pred[i] == 1 & glm_pred[i] == 0) {
+            result_pred[i] <- 1
+        } else if (gam_pred[i] == 0 & glm_pred[i] == 1) {
+            result_pred[i] <- 1
+        } else if (gam_pred[i] == 0 & glm_pred[i] == 0) {
+            result_pred[i] <- 0
+        }
+    }
+    return(as.factor(result_pred))
+}
+
+pred <- predict_vote(gam_pred_bin, glm_pred_bin)
+confusionMatrix(pred, Train$response)
+```
+
+\normalsize
+
+This returns an accuracy of 84.88%, sensitivity of 57.08% and specificity of 96.79%. This voting composition between both models tends to have a significantly harder time classifying clients without good credit, however, clients with good credit rating are very accurately classified.
+
+And we get the following confusion matrix for it (out of sample prediction):
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=TRUE, fig.show='hide'}
+# GLM
+roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
+cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
+glm_pred <- predict(mod, newdata=Test, type="response")
+glm_pred_bin <- ifelse(glm_pred > roc1$res$lr.eta[cutoff], 1, 0)
+glm_pred_bin <- as.factor(glm_pred_bin)
+
+# GAM
+gam_pred <- predict(fit_gam27, newdata=creditTest, type="response")
+gam_pred_bin <- ifelse(gam_pred > 0.45, 1, 0)
+gam_pred_bin <- as.factor(gam_pred_bin)
+
+predict_vote <- function(gam_pred, glm_pred) {
+    result_pred <- rep(0,length(gam_pred))
+    for (i in 1:length(gam_pred)) {
+        if (gam_pred[i] == 1 & glm_pred[i] == 1) {
+            result_pred[i] <- 1
+        } else if (gam_pred[i] == 1 & glm_pred[i] == 0) {
+            result_pred[i] <- 1
+        } else if (gam_pred[i] == 0 & glm_pred[i] == 1) {
+            result_pred[i] <- 1
+        } else if (gam_pred[i] == 0 & glm_pred[i] == 0) {
+            result_pred[i] <- 0
+        }
+    }
+    return(as.factor(result_pred))
+}
+
+pred <- predict_vote(gam_pred_bin, glm_pred_bin)
+confusionMatrix(pred, Test$response)
+```
+
+\normalsize
+
+The model has a final accuracy of 84.5% with a sensitivity of 53.33% and specificity of 97.86%. The model strongly predicts clients with a good credit rating and has a hard time predicting clients without a good credit rating.
+
+```{bash, echo=FALSE}
+pdftk "./cover page/portada.pdf" "./competition.pdf" cat output "./final_report.pdf"
+```
