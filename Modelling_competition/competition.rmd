@@ -406,7 +406,8 @@ prediction <- ifelse(prediction > roc1$res$lr.eta[cutoff], 1, 0)
 pred <- as.factor(prediction)
 ```
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-caret::confusionMatrix(pred, Test$response)
+caret::confusionMatrix(pred, Test$response)$table
+caret::confusionMatrix(pred, Test$response)$overall
 ```
 
 \normalsize
@@ -538,7 +539,8 @@ pred <- as.factor(prediction)
 \tiny
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-caret::confusionMatrix(pred, Test$response)
+caret::confusionMatrix(pred, Test$response)$table
+caret::confusionMatrix(pred, Test$response)$overall
 ```
 
 \normalsize
@@ -625,7 +627,8 @@ pred <- as.factor(prediction)
 \tiny
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-caret::confusionMatrix(pred, Test$response)
+caret::confusionMatrix(pred, Test$response)$table
+caret::confusionMatrix(pred, Test$response)$overall
 ```
 
 \normalsize
@@ -679,7 +682,8 @@ pred <- as.factor(prediction)
 \tiny
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-caret::confusionMatrix(pred, Test$response)
+caret::confusionMatrix(pred, Test$response)$table
+caret::confusionMatrix(pred, Test$response)$overall
 ```
 
 \normalsize
@@ -1043,7 +1047,8 @@ predict_vote <- function(gam_pred, glm_pred) {
 }
 
 pred <- predict_vote(gam_pred_bin, glm_pred_bin)
-confusionMatrix(pred, Train$response)
+confusionMatrix(pred, Train$response)$table
+confusionMatrix(pred, Train$response)$overall
 ```
 
 \normalsize
@@ -1084,12 +1089,119 @@ predict_vote <- function(gam_pred, glm_pred) {
 }
 
 pred <- predict_vote(gam_pred_bin, glm_pred_bin)
-confusionMatrix(pred, Test$response)
+confusionMatrix(pred, Test$response)$table
+confusionMatrix(pred, Test$response)$overall
 ```
 
 \normalsize
 
 The model has a final accuracy of 84.5% with a sensitivity of 53.33% and specificity of 97.86%. The model strongly predicts clients with a good credit rating and has a hard time predicting clients without a good credit rating.
+
+## Reasoning behind our decision
+
+The model chosen prioritizes accuracy at predicting clients with good credit rating. As we do not have a cost function to decide whether assigning a good rating to a client is more important (or not) than a bad rating, we settle for the model with the highest accuracy. Part of the reasoning on prioritizing this subset of clients is that the credits the clients ask for tend to be for relatively low-risk spendings like a used car, radio or tv, and other appliances which do not represent a huge cost for the financial institution in the case of a delay.
+
+Clients without a good rating are also not only significantly less abundant but also much more inconsistent, therefore making it difficult to accurately predict. Alternatively, in case we needed to increase our sensitivity, given that it is, indeed, quite low, we can change our choice table to the following:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+table1 <- data.frame(gam_result=c(1,1,0,0), glm_result=c(1,0,1,0), final_choice=c(1,0,0,0))
+knitr::kable(
+    table1,
+    booktabs=TRUE,
+    caption="best models",
+    format="latex"
+) %>% kable_styling(latex_options="HOLD_position")
+```
+
+That way whenever both the GLM and GAM disagree with a rating, we simply decide to assign the bad rating to the client to lower risk for the institution (in case providing credit to bad rating clients was particularly costly or risky, which we don't know).
+
+This model yields a significantly higher sensitivity but an also somewhat lower specificity, and, as a result (as the majority of clients have a good rating), also yields a model with lower accuracy.
+
+These are the results of the (in sample) prediction for the alternative model:
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=TRUE, fig.show='hide'}
+# GLM
+roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
+cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
+glm_pred <- predict(mod, newdata=Train, type="response")
+glm_pred_bin <- ifelse(glm_pred > roc1$res$lr.eta[cutoff], 1, 0)
+glm_pred_bin <- as.factor(glm_pred_bin)
+
+# GAM
+gam_pred <- predict(fit_gam27, newdata=creditTrain, type="response")
+gam_pred_bin <- ifelse(gam_pred > 0.45, 1, 0)
+gam_pred_bin <- as.factor(gam_pred_bin)
+
+predict_vote <- function(gam_pred, glm_pred) {
+    result_pred <- rep(0,length(gam_pred))
+    for (i in 1:length(gam_pred)) {
+        if (gam_pred[i] == 1 & glm_pred[i] == 1) {
+            result_pred[i] <- 1
+        } else if (gam_pred[i] == 1 & glm_pred[i] == 0) {
+            result_pred[i] <- 0
+        } else if (gam_pred[i] == 0 & glm_pred[i] == 1) {
+            result_pred[i] <- 0
+        } else if (gam_pred[i] == 0 & glm_pred[i] == 0) {
+            result_pred[i] <- 0
+        }
+    }
+    return(as.factor(result_pred))
+}
+
+pred <- predict_vote(gam_pred_bin, glm_pred_bin)
+confusionMatrix(pred, Train$response)$table
+confusionMatrix(pred, Train$response)$overall
+```
+
+\normalsize
+
+Our in-sample prediction is strong, where we get an accuracy of 81.62% with a significantly more balanced sensitivity and specificity of 82.08% and 81.43% respectively. Our inference from this is that this model could be the model with the lowest risk for the financial institution.
+
+And for the (out of sample) prediction, we get the following result:
+
+\tiny
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=TRUE, fig.show='hide'}
+# GLM
+roc1 <- Epi::ROC(form=formula(mod), data=Train, plot="ROC", lw=3, cex=1.5)
+cutoff <- which.max(rowSums(roc1$res[, c("sens", "spec")]))
+glm_pred <- predict(mod, newdata=Test, type="response")
+glm_pred_bin <- ifelse(glm_pred > roc1$res$lr.eta[cutoff], 1, 0)
+glm_pred_bin <- as.factor(glm_pred_bin)
+
+# GAM
+gam_pred <- predict(fit_gam27, newdata=creditTest, type="response")
+gam_pred_bin <- ifelse(gam_pred > 0.45, 1, 0)
+gam_pred_bin <- as.factor(gam_pred_bin)
+
+predict_vote <- function(gam_pred, glm_pred) {
+    result_pred <- rep(0,length(gam_pred))
+    for (i in 1:length(gam_pred)) {
+        if (gam_pred[i] == 1 & glm_pred[i] == 1) {
+            result_pred[i] <- 1
+        } else if (gam_pred[i] == 1 & glm_pred[i] == 0) {
+            result_pred[i] <- 0
+        } else if (gam_pred[i] == 0 & glm_pred[i] == 1) {
+            result_pred[i] <- 0
+        } else if (gam_pred[i] == 0 & glm_pred[i] == 0) {
+            result_pred[i] <- 0
+        }
+    }
+    return(as.factor(result_pred))
+}
+
+pred <- predict_vote(gam_pred_bin, glm_pred_bin)
+confusionMatrix(pred, Test$response)$table
+confusionMatrix(pred, Test$response)$overall
+```
+
+\normalsize
+
+For our out of sample prediction we get an accuracy of 79% but a sensitivity of 73.33% and specificity of 81.43%. Our predictions for good credit rating clients are very consistent but also of significantly less accuracy than our previous model, however, the only reason for this is the fact that more clients have good rating than not (70/30).
+
+If we had a cost function to prioritize one model over the other, we would certainly make use of it in order to determine which model could yield the highest risk-adjusted return for the financial institution. Therefore we must conclude that both are appropriate for the task at hand.
 
 ```{bash, echo=FALSE}
 pdftk "./cover page/portada.pdf" "./competition.pdf" cat output "./final_report.pdf"
