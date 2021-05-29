@@ -1,4 +1,4 @@
-# UC3MRegressionModels
+# Regression Models (UC3M)
 
 Stuff done during the regression models class at UC3M
 
